@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Callable
 
 from ..clients import CoinGeckoClient, EthereumClient, GoogleSheetsClient
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from .config import AppConfig, get_config
 from .monitoring.health import HealthChecker
 from .monitoring.metrics import MetricsCollector
 from .processors import BatchProcessor, WalletProcessor
-from .utils import CacheManager
+from .utils.cache import CacheManager
 
 logger = logging.getLogger(__name__)
 

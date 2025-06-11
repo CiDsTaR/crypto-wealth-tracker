@@ -9,7 +9,7 @@ import aiohttp
 from asyncio_throttle import Throttler
 
 from ..config import CoinGeckoConfig
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 from .coingecko_types import (
     TokenPrice,
     TokenSearchResult,

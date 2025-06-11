@@ -17,7 +17,7 @@ from ..clients import (
     normalize_address,
 )
 from ..config import AppConfig
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 from .batch_types import (
     BatchConfig,
     BatchProgress,

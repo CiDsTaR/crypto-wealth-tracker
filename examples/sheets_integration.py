@@ -24,17 +24,24 @@ from wallet_tracker.processors.batch_types import BatchConfig
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+SAMPLE_SPREADSHEET_ID = "1n61WSgRYk8kTZIW-lDPFjNSlgGZReRtQ68xIFSiwKHs"
+INPUT_SHEET_NAME = "Wallet_Addresses"
+OUTPUT_SHEET_NAME = "Analysis_Results"
+DASHBOARD_SHEET = "Dashboard"
+RAW_DATA_SHEET = "Raw_Data"
+ANALYTICS_SHEET = "Analytics"
+REPORT_SHEET = "Automated_Report"
+FORMATTED_SHEET_NAME = "Formatted_Results"
+BULK_RESULTS_SHEET = "Bulk_Results"
+MONITORING_SHEET = "Monitoring_Results"
+COMPARISON_SHEET = "Comparison_Results"
+
 
 async def example_1_basic_sheets_integration():
     """Example 1: Basic Google Sheets integration with wallet analysis."""
 
     print("📊 Example 1: Basic Google Sheets Integration")
     print("=" * 50)
-
-    # Note: You'll need to update these with your actual Google Sheets details
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    INPUT_SHEET_NAME = "Wallet_Addresses"
-    OUTPUT_SHEET_NAME = "Analysis_Results"
 
     async with create_application() as app:
         try:
@@ -118,9 +125,6 @@ async def example_2_advanced_formatting():
 
     print("\n🎨 Example 2: Advanced Formatting & Styling")
     print("=" * 45)
-
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    FORMATTED_SHEET_NAME = "Formatted_Results"
 
     async with create_application() as app:
         try:
@@ -217,11 +221,6 @@ async def example_3_bulk_processing_with_sheets():
 
     print("\n🚀 Example 3: Bulk Processing with Progress Tracking")
     print("=" * 55)
-
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    BULK_INPUT_SHEET = "Bulk_Input"
-    PROGRESS_SHEET = "Processing_Progress"
-    BULK_RESULTS_SHEET = "Bulk_Results"
 
     async with create_application() as app:
         try:
@@ -368,11 +367,6 @@ async def example_4_multi_sheet_dashboard():
     print("\n📊 Example 4: Multi-Sheet Dashboard Creation")
     print("=" * 50)
 
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    DASHBOARD_SHEET = "Dashboard"
-    RAW_DATA_SHEET = "Raw_Data"
-    ANALYTICS_SHEET = "Analytics"
-
     async with create_application() as app:
         try:
             sheets_client = app.sheets_client
@@ -502,10 +496,6 @@ async def example_5_automated_reporting():
 
     print("\n🤖 Example 5: Automated Reporting System")
     print("=" * 45)
-
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    REPORT_SHEET = "Automated_Report"
-    HISTORY_SHEET = "Report_History"
 
     async with create_application() as app:
         try:
@@ -911,10 +901,6 @@ async def example_7_real_time_monitoring():
     print("\n📈 Example 7: Real-Time Portfolio Monitoring")
     print("=" * 50)
 
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    MONITORING_SHEET = "Live_Monitor"
-    ALERTS_SHEET = "Price_Alerts"
-
     async with create_application() as app:
         try:
             sheets_client = app.sheets_client
@@ -1074,10 +1060,6 @@ async def example_8_portfolio_comparison():
 
     print("\n📊 Example 8: Portfolio Comparison & Benchmarking")
     print("=" * 55)
-
-    SAMPLE_SPREADSHEET_ID = "your_spreadsheet_id_here"
-    COMPARISON_SHEET = "Portfolio_Comparison"
-    BENCHMARK_SHEET = "Benchmark_Analysis"
 
     async with create_application() as app:
         try:

@@ -1,7 +1,7 @@
 """Type definitions for individual wallet processing operations."""
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -48,7 +48,7 @@ class WalletProcessingJob:
     row_number: int
     status: WalletStatus = WalletStatus.PENDING
     priority: ProcessingPriority = ProcessingPriority.NORMAL
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
     completed_at: datetime | None = None
 

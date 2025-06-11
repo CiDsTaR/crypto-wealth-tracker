@@ -14,7 +14,7 @@ from ..clients import (
     create_wallet_result_from_portfolio,
 )
 from ..config import AppConfig
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 
 logger = logging.getLogger(__name__)
 

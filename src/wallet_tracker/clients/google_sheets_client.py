@@ -10,7 +10,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 from ..config import GoogleSheetsConfig
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 from .google_sheets_types import (
     WALLET_RESULT_HEADERS,
     SheetRange,

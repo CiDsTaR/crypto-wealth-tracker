@@ -10,7 +10,7 @@ import aiohttp
 from asyncio_throttle import Throttler
 
 from ..config import EthereumConfig
-from ..utils import CacheManager
+from ..utils.cache import CacheManager
 from .ethereum_types import (
     WELL_KNOWN_TOKENS,
     EthBalance,
