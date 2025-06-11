@@ -5,7 +5,7 @@ import logging
 import time
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
 from ..clients import CoinGeckoClient, EthereumClient, GoogleSheetsClient
 from ..utils import CacheManager
@@ -604,7 +604,7 @@ class HealthChecker:
     async def run_continuous_monitoring(
         self,
         interval_seconds: int = 300,  # 5 minutes
-        alert_callback: callable | None = None,
+        alert_callback: Callable | None = None,
     ) -> None:
         """Run continuous health monitoring.
 
@@ -890,7 +890,7 @@ class HealthCheckScheduler:
         self,
         interval_minutes: int = 5,
         detailed_check_interval_minutes: int = 30,
-        alert_callback: callable | None = None,
+        alert_callback: Callable | None = None,
     ) -> None:
         """Schedule periodic health checks.
 
@@ -917,7 +917,7 @@ class HealthCheckScheduler:
             f"Scheduled health checks: basic every {interval_minutes}min, detailed every {detailed_check_interval_minutes}min"
         )
 
-    async def _run_periodic_basic_checks(self, interval_minutes: int, alert_callback: callable | None) -> None:
+    async def _run_periodic_basic_checks(self, interval_minutes: int, alert_callback: Callable | None) -> None:
         """Run periodic basic health checks."""
         while self._running:
             try:
