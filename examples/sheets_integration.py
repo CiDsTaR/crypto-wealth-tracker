@@ -11,7 +11,7 @@ This file demonstrates:
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from wallet_tracker.app import create_application
@@ -145,7 +145,7 @@ async def example_2_advanced_formatting():
                     "link_balance": Decimal("0"),
                     "other_tokens_value_usd": Decimal("15000"),
                     "total_value_usd": Decimal("1600000.50"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 500,
                     "is_active": True,
                 },
@@ -162,7 +162,7 @@ async def example_2_advanced_formatting():
                     "link_balance": Decimal("2000"),
                     "other_tokens_value_usd": Decimal("25000"),
                     "total_value_usd": Decimal("1050000.25"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 300,
                     "is_active": True,
                 },
@@ -179,7 +179,7 @@ async def example_2_advanced_formatting():
                     "link_balance": Decimal("50"),
                     "other_tokens_value_usd": Decimal("500"),
                     "total_value_usd": Decimal("53650.75"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 25,
                     "is_active": False,
                 },
@@ -321,7 +321,7 @@ async def example_3_bulk_processing_with_sheets():
                 "processed_count": total_processed,
                 "total_value_usd": total_portfolio_value,
                 "processing_time": processing_time,
-                "analysis_time": datetime.now(),
+                "analysis_time": datetime.now(timezone.utc).isoformat(),
                 "active_wallets": total_processed,  # Simplified
                 "inactive_wallets": 0,
                 "eth_total_value": total_portfolio_value * Decimal("0.6"),  # Estimated
@@ -386,7 +386,7 @@ async def example_4_multi_sheet_dashboard():
                     "link_balance": Decimal("0"),
                     "other_tokens_value_usd": Decimal("15000"),
                     "total_value_usd": Decimal("2600000"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 500,
                     "is_active": True,
                 },
@@ -403,7 +403,7 @@ async def example_4_multi_sheet_dashboard():
                     "link_balance": Decimal("200"),
                     "other_tokens_value_usd": Decimal("3000"),
                     "total_value_usd": Decimal("120200"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 150,
                     "is_active": True,
                 },
@@ -420,7 +420,7 @@ async def example_4_multi_sheet_dashboard():
                     "link_balance": Decimal("50"),
                     "other_tokens_value_usd": Decimal("500"),
                     "total_value_usd": Decimal("36575"),
-                    "last_updated": datetime.now(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                     "transaction_count": 75,
                     "is_active": False,
                 },
@@ -457,7 +457,7 @@ async def example_4_multi_sheet_dashboard():
                 "usdt_holders": len([w for w in portfolio_data if w["usdt_balance"] > 0]),
                 "dai_total_value": sum(w["dai_balance"] for w in portfolio_data),
                 "dai_holders": len([w for w in portfolio_data if w["dai_balance"] > 0]),
-                "analysis_time": datetime.now(),
+                "analysis_time": datetime.now(timezone.utc).isoformat(),
                 "processing_time": "3.5s",
             }
 
@@ -502,7 +502,7 @@ async def example_5_automated_reporting():
             sheets_client = app.sheets_client
 
             # Generate timestamp for this report
-            report_timestamp = datetime.now()
+            report_timestamp = datetime.now(timezone.utc)
             report_id = report_timestamp.strftime("%Y%m%d_%H%M%S")
 
             print(f"📝 Generating automated report: {report_id}")
@@ -523,7 +523,7 @@ async def example_5_automated_reporting():
                 "usdt_holders": 28,
                 "dai_total_value": Decimal("1580000"),
                 "dai_holders": 22,
-                "analysis_time": report_timestamp,
+                "analysis_time": report_timestamp.isoformat(),
                 "processing_time": "45.3s",
             }
 
