@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides practical examples, common usage patterns, and best practices for the Ethereum Wallet Tracker. Each example includes complete, runnable code with explanations.
+This guide provides practical examples, common usage patterns, and best practices for the Crypto Wealth Tracker. Each example includes complete, runnable code with explanations.
 
 ## Table of Contents
 
@@ -1266,7 +1266,7 @@ class HealthMonitor:
                 subject = f"🚨 Wallet Tracker Alert - {health_report['overall_status'].upper()}"
                 
                 body = f"""
-Ethereum Wallet Tracker Health Alert
+Crypto Wealth Tracker Health Alert
 
 Status: {health_report['overall_status'].upper()}
 Timestamp: {health_report['timestamp']}
@@ -1826,4 +1826,4 @@ This examples guide demonstrates:
 - **Implement proper security measures** for production deployments
 - **Use caching effectively** to improve performance and reduce API calls
 
-These patterns provide a solid foundation for building robust, scalable wallet analysis applications with the Ethereum Wallet Tracker.
+These patterns provide a solid foundation for building robust, scalable wallet analysis applications with the Crypto Wealth Tracker.

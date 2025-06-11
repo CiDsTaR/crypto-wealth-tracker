@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Ethereum Wallet Tracker provides a comprehensive Python API for analyzing Ethereum wallets, fetching token prices, and managing data through Google Sheets integration.
+The Crypto Wealth Tracker provides a comprehensive Python API for analyzing Ethereum wallets, fetching token prices, and managing data through Google Sheets integration.
 
 ## Table of Contents
 
@@ -632,7 +632,7 @@ await cache_example()
 
 ## Support and Resources
 
-- **GitHub Repository**: [Ethereum Wallet Tracker](https://github.com/yourusername/ethereum-wallet-tracker)
+- **GitHub Repository**: [Crypto Wealth Tracker](https://github.com/CiDsTaR/crypto-wealth-tracker)
 - **Issue Tracker**: Report bugs and request features
 - **Documentation**: Complete API reference and examples
 - **Examples**: Ready-to-run code examples

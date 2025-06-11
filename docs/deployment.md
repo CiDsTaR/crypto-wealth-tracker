@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers deploying the Ethereum Wallet Tracker in various environments, from local development to production cloud deployments.
+This guide covers deploying the Crypto Wealth Tracker in various environments, from local development to production cloud deployments.
 
 ## Table of Contents
 
@@ -62,8 +62,8 @@ Using UV (Recommended):
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone repository
-git clone https://github.com/yourusername/ethereum-wallet-tracker.git
-cd ethereum-wallet-tracker
+git clone https://github.com/CiDsTaR/crypto-wealth-tracker.git
+cd crypto-wealth-tracker
 
 # Install dependencies
 uv sync --all-extras
@@ -72,8 +72,8 @@ uv sync --all-extras
 Using pip:
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ethereum-wallet-tracker.git
-cd ethereum-wallet-tracker
+git clone https://github.com/CiDsTaR/crypto-wealth-tracker.git
+cd crypto-wealth-tracker
 
 # Create virtual environment
 python -m venv venv
@@ -260,7 +260,7 @@ Create `/etc/systemd/system/wallet-tracker.service`:
 
 ```ini
 [Unit]
-Description=Ethereum Wallet Tracker
+Description=Crypto Wealth Tracker
 After=network.target redis.service
 Requires=redis.service
 
@@ -1047,4 +1047,4 @@ sudo chmod +x /opt/scripts/*.sh
 echo "0 2 * * * /opt/scripts/daily-maintenance.sh" | sudo crontab -
 ```
 
-This deployment guide should get you started with deploying the Ethereum Wallet Tracker in any environment. Adjust configurations based on your specific requirements and infrastructure.
+This deployment guide should get you started with deploying the Crypto Wealth Tracker in any environment. Adjust configurations based on your specific requirements and infrastructure.

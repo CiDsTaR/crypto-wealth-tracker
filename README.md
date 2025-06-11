@@ -1,4 +1,4 @@
-# Ethereum Wallet Tracker 🚀
+# Crypto Wealth Tracker 🚀
 
 A high-performance Python application that calculates on-chain wealth for Ethereum wallets and integrates seamlessly with Google Sheets for data input and output.
 
@@ -16,7 +16,7 @@ A high-performance Python application that calculates on-chain wealth for Ethere
 ## 🏗️ Architecture
 
 ```
-ethereum-wallet-tracker/
+crypto-wealth-tracker/
 ├── src/wallet_tracker/
 │   ├── clients/          # API clients (Ethereum, CoinGecko, Google Sheets)
 │   ├── processors/       # Core business logic
@@ -42,8 +42,8 @@ ethereum-wallet-tracker/
 
 1. **Clone and setup:**
 ```bash
-git clone https://github.com/yourusername/ethereum-wallet-tracker.git
-cd ethereum-wallet-tracker
+git clone https://github.com/CiDsTaR/crypto-wealth-tracker.git
+cd crypto-wealth-tracker
 ```
 
 2. **Install dependencies:**
@@ -166,7 +166,7 @@ uv run pytest tests/test_wallet_processor.py -v
 
 ```bash
 # Build and deploy
-gcloud run deploy ethereum-wallet-tracker \
+gcloud run deploy crypto-wealth-tracker \
   --source . \
   --platform managed \
   --region us-central1 \
@@ -178,13 +178,13 @@ gcloud run deploy ethereum-wallet-tracker \
 
 ```bash
 # Build image
-docker build -t ethereum-wallet-tracker .
+docker build -t crypto-wealth-tracker .
 
 # Run container
 docker run -d \
   --env-file .env \
   -p 8080:8080 \
-  ethereum-wallet-tracker
+  crypto-wealth-tracker
 ```
 
 ## 📈 Monitoring
@@ -246,4 +246,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📧 Email: support@yourcompany.com
 - 💬 Discord: [Join our community](https://discord.gg/yourserver)
 - 📖 Documentation: [Full docs](https://docs.yourproject.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/ethereum-wallet-tracker/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/CiDsTaR/crypto-wealth-tracker/issues)

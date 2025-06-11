@@ -1,4 +1,4 @@
-"""Validation utilities for the Ethereum Wallet Tracker application."""
+"""Validation utilities for the Crypto Wealth Tracker application."""
 
 import json
 import re

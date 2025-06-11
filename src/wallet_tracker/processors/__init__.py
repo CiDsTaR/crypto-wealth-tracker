@@ -1,4 +1,4 @@
-"""Processors package for the Ethereum Wallet Tracker.
+"""Processors package for the Crypto Wealth Tracker.
 
 This package provides high-level processing engines for wallet analysis,
 batch operations, and large-scale data processing workflows.

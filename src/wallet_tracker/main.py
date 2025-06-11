@@ -1,4 +1,4 @@
-"""Main entry point for the Ethereum Wallet Tracker application."""
+"""Main entry point for the Crypto Wealth Tracker application."""
 
 import asyncio
 import logging
@@ -75,7 +75,7 @@ class UnicodeFilter(logging.Filter):
 
 
 class WalletTrackerApp:
-    """Main application class for Ethereum Wallet Tracker."""
+    """Main application class for Crypto Wealth Tracker."""
 
     def __init__(self):
         """Initialize the application."""
@@ -95,7 +95,7 @@ class WalletTrackerApp:
     async def initialize(self) -> None:
         """Initialize all application components."""
         try:
-            self._logger.info("🚀 Starting Ethereum Wallet Tracker initialization")
+            self._logger.info("🚀 Starting Crypto Wealth Tracker initialization")
 
             # Step 1: Load and validate configuration
             await self._load_configuration()
@@ -527,7 +527,7 @@ class WalletTrackerApp:
         self._logger.info("🎮 Starting interactive mode")
 
         print("\n" + "="*50)
-        print("🏦 Ethereum Wallet Tracker - Interactive Mode")
+        print("🏦 Crypto Wealth Tracker - Interactive Mode")
         print("="*50)
 
         while not self._shutdown_requested:

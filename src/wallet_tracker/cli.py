@@ -1,4 +1,4 @@
-"""Command-line interface for the Ethereum Wallet Tracker application."""
+"""Command-line interface for the Crypto Wealth Tracker application."""
 
 import asyncio
 import json
@@ -67,7 +67,7 @@ def print_info(message: str) -> None:
 @click.option('--dry-run', is_flag=True, help='Perform dry run without making changes')
 @click.pass_context
 def cli(ctx: click.Context, config_file: Optional[str], log_level: str, dry_run: bool):
-    """Ethereum Wallet Tracker - Calculate on-chain wealth for Ethereum wallets."""
+    """Crypto Wealth Tracker - Calculate on-chain wealth for Ethereum wallets."""
     ctx.ensure_object(dict)
     ctx.obj['config_file'] = config_file
     ctx.obj['log_level'] = log_level
@@ -75,7 +75,7 @@ def cli(ctx: click.Context, config_file: Optional[str], log_level: str, dry_run:
 
     # Show banner
     console.print(Panel.fit(
-        "[bold blue]🏦 Ethereum Wallet Tracker[/bold blue]\n"
+        "[bold blue]🏦 Crypto Wealth Tracker[/bold blue]\n"
         "[dim]Calculate on-chain wealth for Ethereum wallets[/dim]",
         border_style="blue"
     ))

@@ -1,4 +1,4 @@
-"""Google Sheets integration examples for the Ethereum Wallet Tracker.
+"""Google Sheets integration examples for the Crypto Wealth Tracker.
 
 This file demonstrates:
 - Reading wallet addresses from Google Sheets
@@ -875,7 +875,7 @@ async def example_6_error_handling_sheets():
 async def run_all_sheets_examples():
     """Run all Google Sheets integration examples."""
 
-    print("📊 Ethereum Wallet Tracker - Google Sheets Integration Examples")
+    print("📊 Crypto Wealth Tracker - Google Sheets Integration Examples")
     print("=" * 70)
     print("This script demonstrates comprehensive Google Sheets integration")
     print("including data formatting, dashboard creation, and error handling.")

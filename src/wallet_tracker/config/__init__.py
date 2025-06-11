@@ -1,4 +1,4 @@
-"""Configuration package for the Ethereum Wallet Tracker.
+"""Configuration package for the Crypto Wealth Tracker.
 
 This package provides configuration management using Pydantic models
 and environment variables for type safety and validation.

@@ -1,4 +1,4 @@
-"""Fixed basic usage examples for the Ethereum Wallet Tracker.
+"""Fixed basic usage examples for the Crypto Wealth Tracker.
 
 This file demonstrates:
 - Simple wallet analysis
@@ -544,9 +544,9 @@ async def example_9_custom_processing_logic():
 async def run_all_examples():
     """Run all basic usage examples."""
 
-    print("🚀 Ethereum Wallet Tracker - Basic Usage Examples")
+    print("🚀 Crypto Wealth Tracker - Basic Usage Examples")
     print("=" * 60)
-    print("This script demonstrates basic usage patterns for the Ethereum Wallet Tracker.")
+    print("This script demonstrates basic usage patterns for the Crypto Wealth Tracker.")
     print("Make sure you have configured your API keys in the .env file before running.\n")
 
     examples = [

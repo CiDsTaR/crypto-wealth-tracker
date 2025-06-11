@@ -1,7 +1,7 @@
 [project]
-name = "ethereum-wallet-tracker"
-version = "0.1.0"
-description = "On-chain wealth calculator for Ethereum wallets with Google Sheets integration"
+name = "crypto-wealth-tracker"
+version = "0.0.2"
+description = "On-chain wealth calculator for crypto wallets"
 authors = [
     {name = "CiDsTaR", email = "contact@cidstar.es"}
 ]

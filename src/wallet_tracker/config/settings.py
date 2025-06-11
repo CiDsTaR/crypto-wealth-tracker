@@ -1,4 +1,4 @@
-"""Settings management for the Ethereum Wallet Tracker application."""
+"""Settings management for the Crypto Wealth Tracker application."""
 
 import os
 from functools import lru_cache

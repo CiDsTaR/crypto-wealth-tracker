@@ -1,4 +1,4 @@
-"""Utilities package for the Ethereum Wallet Tracker.
+"""Utilities package for the Crypto Wealth Tracker.
 
 This package provides caching implementations, rate limiting, throttling,
 and other utility functions for the application.

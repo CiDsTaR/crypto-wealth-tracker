@@ -1,4 +1,4 @@
-"""Advanced batch processing examples for the Ethereum Wallet Tracker.
+"""Advanced batch processing examples for the Crypto Wealth Tracker.
 
 This file demonstrates:
 - Large-scale batch processing patterns
@@ -1214,7 +1214,7 @@ async def example_7_advanced_queue_management():
 async def run_all_advanced_examples():
     """Run all advanced batch processing examples."""
 
-    print("🚀 Ethereum Wallet Tracker - Advanced Batch Processing Examples")
+    print("🚀 Crypto Wealth Tracker - Advanced Batch Processing Examples")
     print("=" * 70)
     print("This script demonstrates advanced batch processing patterns, optimization,")
     print("and monitoring techniques for large-scale wallet analysis.\n")

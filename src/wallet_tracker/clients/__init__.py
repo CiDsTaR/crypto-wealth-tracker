@@ -1,4 +1,4 @@
-"""API clients package for the Ethereum Wallet Tracker.
+"""API clients package for the Crypto Wealth Tracker.
 
 This package provides clients for interacting with various APIs:
 - Ethereum blockchain (via Alchemy)
