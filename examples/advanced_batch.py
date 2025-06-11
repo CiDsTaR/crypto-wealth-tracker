@@ -453,19 +453,15 @@ async def example_4_error_recovery_patterns():
                 retry_failed_jobs=True,
                 max_retries=3,
                 use_cache=True,
-                skip_invalid_addresses=True,  # Skip rather than fail
-                continue_on_error=True,  # Continue processing even if some fail
-                error_threshold_percent=50,  # Stop if more than 50% fail
             )
 
             print("🛡️ Processing with resilient configuration...")
-            print(f"  Error Threshold: {resilient_config.error_threshold_percent}%")
-            print(f"  Continue on Error: {resilient_config.continue_on_error}")
             print(f"  Max Retries: {resilient_config.max_retries}")
 
             # Track errors during processing
             error_details = []
 
+            # TODO: Override by progress callback
             def error_callback(error_info: dict[str, Any]):
                 """Track error details."""
                 error_details.append(
@@ -487,7 +483,7 @@ async def example_4_error_recovery_patterns():
             start_time = time.time()
 
             results = await app.batch_processor.process_wallet_list(
-                addresses=test_addresses, config_override=resilient_config, error_callback=error_callback
+                addresses=test_addresses, config_override=resilient_config
             )
 
             end_time = time.time()
@@ -576,7 +572,6 @@ async def example_5_performance_monitoring():
                 request_delay_seconds=0.2,
                 timeout_seconds=120,
                 use_cache=True,
-                enable_detailed_metrics=True,
             )
 
             # Monitoring callbacks
@@ -628,9 +623,9 @@ async def example_5_performance_monitoring():
             results = await app.batch_processor.process_wallet_list(
                 addresses=test_addresses,
                 config_override=monitoring_config,
-                phase_callback=phase_callback,
-                resource_callback=resource_callback,
-                api_callback=api_callback,
+                #phase_callback=phase_callback,
+                #resource_callback=resource_callback,
+                #api_callback=api_callback,
             )
 
             performance_metrics["end_time"] = time.time()
@@ -755,8 +750,6 @@ async def example_6_resource_optimization():
                         max_concurrent_jobs_per_batch=2,
                         request_delay_seconds=0.3,
                         use_cache=False,  # Disable cache to save memory
-                        enable_garbage_collection=True,
-                        max_memory_mb=100,
                     ),
                 },
                 {
@@ -766,8 +759,6 @@ async def example_6_resource_optimization():
                         max_concurrent_jobs_per_batch=8,
                         request_delay_seconds=0.05,
                         use_cache=True,  # Use cache for speed
-                        enable_garbage_collection=False,
-                        max_memory_mb=500,
                     ),
                 },
                 {
@@ -777,8 +768,6 @@ async def example_6_resource_optimization():
                         max_concurrent_jobs_per_batch=4,
                         request_delay_seconds=0.15,
                         use_cache=True,
-                        enable_garbage_collection=True,
-                        max_memory_mb=250,
                     ),
                 },
             ]
