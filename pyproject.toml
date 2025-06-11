@@ -1,0 +1,111 @@
+[project]
+name = "ethereum-wallet-tracker"
+version = "0.1.0"
+description = "On-chain wealth calculator for Ethereum wallets with Google Sheets integration"
+authors = [
+    {name = "CiDsTaR", email = "contact@cidstar.es"}
+]
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.12.4",
+    "asyncio-throttle>=1.0.2",
+    "diskcache>=5.6.3",
+    "gspread>=6.2.1",
+    "pandas>=2.2.3",
+    "pydantic>=2.11.5",
+    "python-dotenv>=1.1.0",
+    "redis>=6.2.0",
+    "requests>=2.32.3",
+    "web3>=7.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=1.0.0",
+    "pytest-mock>=3.14.1",
+    "ruff>=0.11.12",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wallet_tracker"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+lint.select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG001", # unused-function-argument
+    "SIM",    # flake8-simplify
+    "S",      # bandit security
+    "N",      # pep8-naming
+]
+lint.ignore = [
+    "E501",   # line too long (handled by formatter)
+    "S101",   # use of assert (okay in tests)
+    "S603",   # subprocess call without shell=True check
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["S101"]  # Allow asserts in tests
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: mark test as integration test requiring network access",
+    "slow: mark test as slow running",
+    "unit: mark test as unit test"
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101", "B601"]
