@@ -1,7 +1,6 @@
 """Tests for clients package __init__.py imports and exports."""
 
 import inspect
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -15,13 +14,13 @@ class TestClientsPackageImports:
     def test_ethereum_client_imports(self):
         """Test Ethereum client imports."""
         # Main client class
-        assert hasattr(clients, 'EthereumClient')
+        assert hasattr(clients, "EthereumClient")
         assert inspect.isclass(clients.EthereumClient)
 
         # Exception classes
-        assert hasattr(clients, 'EthereumClientError')
-        assert hasattr(clients, 'InvalidAddressError')
-        assert hasattr(clients, 'EthereumAPIError')
+        assert hasattr(clients, "EthereumClientError")
+        assert hasattr(clients, "InvalidAddressError")
+        assert hasattr(clients, "EthereumAPIError")
 
         # Check inheritance
         assert issubclass(clients.InvalidAddressError, clients.EthereumClientError)
@@ -30,15 +29,15 @@ class TestClientsPackageImports:
     def test_coingecko_client_imports(self):
         """Test CoinGecko client imports."""
         # Main client classes
-        assert hasattr(clients, 'CoinGeckoClient')
-        assert hasattr(clients, 'CoinGeckoPriceService')
+        assert hasattr(clients, "CoinGeckoClient")
+        assert hasattr(clients, "CoinGeckoPriceService")
         assert inspect.isclass(clients.CoinGeckoClient)
         assert inspect.isclass(clients.CoinGeckoPriceService)
 
         # Exception classes
-        assert hasattr(clients, 'CoinGeckoClientError')
-        assert hasattr(clients, 'CoinGeckoAPIError')
-        assert hasattr(clients, 'RateLimitError')
+        assert hasattr(clients, "CoinGeckoClientError")
+        assert hasattr(clients, "CoinGeckoAPIError")
+        assert hasattr(clients, "RateLimitError")
 
         # Check inheritance
         assert issubclass(clients.CoinGeckoAPIError, clients.CoinGeckoClientError)
@@ -47,15 +46,15 @@ class TestClientsPackageImports:
     def test_google_sheets_client_imports(self):
         """Test Google Sheets client imports."""
         # Main client class
-        assert hasattr(clients, 'GoogleSheetsClient')
+        assert hasattr(clients, "GoogleSheetsClient")
         assert inspect.isclass(clients.GoogleSheetsClient)
 
         # Exception classes
-        assert hasattr(clients, 'GoogleSheetsClientError')
-        assert hasattr(clients, 'SheetsAPIError')
-        assert hasattr(clients, 'SheetsAuthenticationError')
-        assert hasattr(clients, 'SheetsNotFoundError')
-        assert hasattr(clients, 'SheetsPermissionError')
+        assert hasattr(clients, "GoogleSheetsClientError")
+        assert hasattr(clients, "SheetsAPIError")
+        assert hasattr(clients, "SheetsAuthenticationError")
+        assert hasattr(clients, "SheetsNotFoundError")
+        assert hasattr(clients, "SheetsPermissionError")
 
         # Check inheritance
         assert issubclass(clients.SheetsAPIError, clients.GoogleSheetsClientError)
@@ -69,22 +68,22 @@ class TestEthereumDataTypes:
 
     def test_balance_types(self):
         """Test balance-related type imports."""
-        assert hasattr(clients, 'TokenBalance')
-        assert hasattr(clients, 'EthBalance')
+        assert hasattr(clients, "TokenBalance")
+        assert hasattr(clients, "EthBalance")
         assert inspect.isclass(clients.TokenBalance)
         assert inspect.isclass(clients.EthBalance)
 
     def test_portfolio_types(self):
         """Test portfolio-related type imports."""
-        assert hasattr(clients, 'WalletPortfolio')
-        assert hasattr(clients, 'WalletActivity')
+        assert hasattr(clients, "WalletPortfolio")
+        assert hasattr(clients, "WalletActivity")
         assert inspect.isclass(clients.WalletPortfolio)
         assert inspect.isclass(clients.WalletActivity)
 
     def test_metadata_types(self):
         """Test metadata type imports."""
-        assert hasattr(clients, 'TokenMetadata')
-        assert hasattr(clients, 'TransactionInfo')
+        assert hasattr(clients, "TokenMetadata")
+        assert hasattr(clients, "TransactionInfo")
         assert inspect.isclass(clients.TokenMetadata)
         assert inspect.isclass(clients.TransactionInfo)
 
@@ -94,9 +93,9 @@ class TestCoinGeckoDataTypes:
 
     def test_price_types(self):
         """Test price-related type imports."""
-        assert hasattr(clients, 'TokenPrice')
-        assert hasattr(clients, 'TokenSearchResult')
-        assert hasattr(clients, 'ContractPriceResponse')
+        assert hasattr(clients, "TokenPrice")
+        assert hasattr(clients, "TokenSearchResult")
+        assert hasattr(clients, "ContractPriceResponse")
         assert inspect.isclass(clients.TokenPrice)
         assert inspect.isclass(clients.TokenSearchResult)
         assert inspect.isclass(clients.ContractPriceResponse)
@@ -107,11 +106,11 @@ class TestGoogleSheetsDataTypes:
 
     def test_sheets_types(self):
         """Test Google Sheets type imports."""
-        assert hasattr(clients, 'WalletAddress')
-        assert hasattr(clients, 'WalletResult')
-        assert hasattr(clients, 'SummaryData')
-        assert hasattr(clients, 'SheetConfig')
-        assert hasattr(clients, 'SheetRange')
+        assert hasattr(clients, "WalletAddress")
+        assert hasattr(clients, "WalletResult")
+        assert hasattr(clients, "SummaryData")
+        assert hasattr(clients, "SheetConfig")
+        assert hasattr(clients, "SheetRange")
         assert inspect.isclass(clients.WalletAddress)
         assert inspect.isclass(clients.WalletResult)
         assert inspect.isclass(clients.SummaryData)
@@ -120,8 +119,8 @@ class TestGoogleSheetsDataTypes:
 
     def test_sheets_constants(self):
         """Test Google Sheets constants imports."""
-        assert hasattr(clients, 'WALLET_RESULT_COLUMNS')
-        assert hasattr(clients, 'WALLET_RESULT_HEADERS')
+        assert hasattr(clients, "WALLET_RESULT_COLUMNS")
+        assert hasattr(clients, "WALLET_RESULT_HEADERS")
         assert isinstance(clients.WALLET_RESULT_COLUMNS, dict)
         assert isinstance(clients.WALLET_RESULT_HEADERS, list)
 
@@ -131,11 +130,11 @@ class TestUtilityFunctions:
 
     def test_ethereum_utilities(self):
         """Test Ethereum utility function imports."""
-        assert hasattr(clients, 'normalize_address')
-        assert hasattr(clients, 'is_valid_ethereum_address')
-        assert hasattr(clients, 'wei_to_eth')
-        assert hasattr(clients, 'format_token_amount')
-        assert hasattr(clients, 'calculate_token_value')
+        assert hasattr(clients, "normalize_address")
+        assert hasattr(clients, "is_valid_ethereum_address")
+        assert hasattr(clients, "wei_to_eth")
+        assert hasattr(clients, "format_token_amount")
+        assert hasattr(clients, "calculate_token_value")
 
         # Test that they are callable
         assert callable(clients.normalize_address)
@@ -146,9 +145,9 @@ class TestUtilityFunctions:
 
     def test_coingecko_utilities(self):
         """Test CoinGecko utility function imports."""
-        assert hasattr(clients, 'get_coingecko_id')
-        assert hasattr(clients, 'normalize_coingecko_price_data')
-        assert hasattr(clients, 'is_stablecoin')
+        assert hasattr(clients, "get_coingecko_id")
+        assert hasattr(clients, "normalize_coingecko_price_data")
+        assert hasattr(clients, "is_stablecoin")
 
         # Test that they are callable
         assert callable(clients.get_coingecko_id)
@@ -157,8 +156,8 @@ class TestUtilityFunctions:
 
     def test_google_sheets_utilities(self):
         """Test Google Sheets utility function imports."""
-        assert hasattr(clients, 'create_wallet_result_from_portfolio')
-        assert hasattr(clients, 'create_summary_from_results')
+        assert hasattr(clients, "create_wallet_result_from_portfolio")
+        assert hasattr(clients, "create_summary_from_results")
 
         # Test that they are callable
         assert callable(clients.create_wallet_result_from_portfolio)
@@ -171,7 +170,7 @@ class TestModuleStructure:
     def test_all_exports_defined(self):
         """Test that __all__ is properly defined and complete."""
         # The __all__ list should be defined in the clients module
-        assert hasattr(clients, '__all__')
+        assert hasattr(clients, "__all__")
         assert isinstance(clients.__all__, list)
         assert len(clients.__all__) > 0
 
@@ -183,11 +182,11 @@ class TestModuleStructure:
     def test_no_extra_exports(self):
         """Test that only intended items are exported."""
         # Get all public attributes (not starting with _)
-        public_attrs = [attr for attr in dir(clients) if not attr.startswith('_')]
+        public_attrs = [attr for attr in dir(clients) if not attr.startswith("_")]
 
         # Check that all public attributes are in __all__
         for attr in public_attrs:
-            if not attr.startswith('_'):  # Skip private attributes
+            if not attr.startswith("_"):  # Skip private attributes
                 assert attr in clients.__all__, f"'{attr}' is public but not in __all__"
 
     def test_docstring_exists(self):
@@ -209,10 +208,10 @@ class TestClientInstantiation:
 
         # Check that it has expected methods (without instantiating)
         expected_methods = [
-            '__init__',
-            'get_wallet_portfolio',
-            'close',
-            'get_stats',
+            "__init__",
+            "get_wallet_portfolio",
+            "close",
+            "get_stats",
         ]
 
         for method_name in expected_methods:
@@ -227,11 +226,11 @@ class TestClientInstantiation:
 
         # Check that it has expected methods
         expected_methods = [
-            '__init__',
-            'get_token_price',
-            'get_eth_price',
-            'close',
-            'get_stats',
+            "__init__",
+            "get_token_price",
+            "get_eth_price",
+            "close",
+            "get_stats",
         ]
 
         for method_name in expected_methods:
@@ -246,11 +245,11 @@ class TestClientInstantiation:
 
         # Check that it has expected methods
         expected_methods = [
-            '__init__',
-            'read_wallet_addresses',
-            'write_wallet_results',
-            'close',
-            'get_stats',
+            "__init__",
+            "read_wallet_addresses",
+            "write_wallet_results",
+            "close",
+            "get_stats",
         ]
 
         for method_name in expected_methods:
@@ -265,20 +264,20 @@ class TestDataTypeStructures:
         TokenBalance = clients.TokenBalance
 
         # Check that it's a dataclass
-        assert hasattr(TokenBalance, '__dataclass_fields__')
+        assert hasattr(TokenBalance, "__dataclass_fields__")
 
         # Check expected fields
         expected_fields = [
-            'contract_address',
-            'symbol',
-            'name',
-            'decimals',
-            'balance_raw',
-            'balance_formatted',
-            'price_usd',
-            'value_usd',
-            'logo_url',
-            'is_verified'
+            "contract_address",
+            "symbol",
+            "name",
+            "decimals",
+            "balance_raw",
+            "balance_formatted",
+            "price_usd",
+            "value_usd",
+            "logo_url",
+            "is_verified",
         ]
 
         actual_fields = list(TokenBalance.__dataclass_fields__.keys())
@@ -290,16 +289,16 @@ class TestDataTypeStructures:
         WalletPortfolio = clients.WalletPortfolio
 
         # Check that it's a dataclass
-        assert hasattr(WalletPortfolio, '__dataclass_fields__')
+        assert hasattr(WalletPortfolio, "__dataclass_fields__")
 
         # Check expected fields
         expected_fields = [
-            'address',
-            'eth_balance',
-            'token_balances',
-            'total_value_usd',
-            'last_updated',
-            'transaction_count'
+            "address",
+            "eth_balance",
+            "token_balances",
+            "total_value_usd",
+            "last_updated",
+            "transaction_count",
         ]
 
         actual_fields = list(WalletPortfolio.__dataclass_fields__.keys())
@@ -311,15 +310,10 @@ class TestDataTypeStructures:
         TokenPrice = clients.TokenPrice
 
         # Check that it's a dataclass
-        assert hasattr(TokenPrice, '__dataclass_fields__')
+        assert hasattr(TokenPrice, "__dataclass_fields__")
 
         # Check expected fields
-        expected_fields = [
-            'token_id',
-            'symbol',
-            'name',
-            'current_price_usd'
-        ]
+        expected_fields = ["token_id", "symbol", "name", "current_price_usd"]
 
         actual_fields = list(TokenPrice.__dataclass_fields__.keys())
         for field in expected_fields:
@@ -354,7 +348,7 @@ class TestUtilityFunctionInterfaces:
         signature = inspect.signature(clients.get_coingecko_id)
         # Should have optional contract_address and symbol parameters
         param_names = list(signature.parameters.keys())
-        assert 'contract_address' in param_names or 'symbol' in param_names
+        assert "contract_address" in param_names or "symbol" in param_names
 
         # Test is_stablecoin
         assert callable(clients.is_stablecoin)
@@ -402,7 +396,7 @@ class TestImportStability:
         """Test that importing clients module doesn't raise exceptions."""
         # Re-import to ensure it's stable
         try:
-            import wallet_tracker.clients
+            pass
             # Should not raise any exceptions
         except Exception as e:
             pytest.fail(f"Importing clients module raised exception: {e}")
@@ -422,8 +416,8 @@ class TestImportStability:
     def test_no_global_state_modification(self):
         """Test that importing doesn't modify global state."""
         # This is hard to test comprehensively, but we can check some basics
-        import sys
         import os
+        import sys
 
         # Save current state
         original_path = sys.path[:]
@@ -431,6 +425,7 @@ class TestImportStability:
 
         # Re-import clients
         import importlib
+
         importlib.reload(clients)
 
         # Check that global state wasn't modified
@@ -446,23 +441,23 @@ class TestTypeHints:
         TokenBalance = clients.TokenBalance
 
         # Check that __annotations__ exists
-        if hasattr(TokenBalance, '__annotations__'):
+        if hasattr(TokenBalance, "__annotations__"):
             annotations = TokenBalance.__annotations__
             assert len(annotations) > 0
         else:
             # For Python versions that might not preserve annotations
             # at least check that dataclass fields exist
-            assert hasattr(TokenBalance, '__dataclass_fields__')
+            assert hasattr(TokenBalance, "__dataclass_fields__")
 
     def test_function_type_hints(self):
         """Test that functions have type hints where expected."""
         # Check some utility functions for type hints
         normalize_addr = clients.normalize_address
 
-        if hasattr(normalize_addr, '__annotations__'):
+        if hasattr(normalize_addr, "__annotations__"):
             annotations = normalize_addr.__annotations__
             # Should have return type hint at minimum
-            assert 'return' in annotations or len(annotations) > 0
+            assert "return" in annotations or len(annotations) > 0
 
 
 class TestCompatibility:
@@ -476,9 +471,9 @@ class TestCompatibility:
         assert sys.version_info >= (3, 8), "Code requires Python 3.8+"
 
         # All imports should work
-        assert hasattr(clients, 'EthereumClient')
-        assert hasattr(clients, 'CoinGeckoClient')
-        assert hasattr(clients, 'GoogleSheetsClient')
+        assert hasattr(clients, "EthereumClient")
+        assert hasattr(clients, "CoinGeckoClient")
+        assert hasattr(clients, "GoogleSheetsClient")
 
     def test_optional_dependencies_handling(self):
         """Test that the module handles optional dependencies gracefully."""
@@ -488,12 +483,12 @@ class TestCompatibility:
 
         # At minimum, all the classes should be importable
         classes_to_test = [
-            'EthereumClient',
-            'CoinGeckoClient',
-            'GoogleSheetsClient',
-            'TokenBalance',
-            'WalletPortfolio',
-            'TokenPrice'
+            "EthereumClient",
+            "CoinGeckoClient",
+            "GoogleSheetsClient",
+            "TokenBalance",
+            "WalletPortfolio",
+            "TokenPrice",
         ]
 
         for class_name in classes_to_test:

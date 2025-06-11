@@ -2,15 +2,14 @@
 
 import asyncio
 import logging
+import os
 import signal
 import sys
-import os
-from pathlib import Path
-from typing import Optional
 
 # Fix Windows console encoding for Unicode support
 if sys.platform == "win32":
     import codecs
+
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
     sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
     # Set console to UTF-8 if possible
@@ -19,19 +18,16 @@ if sys.platform == "win32":
     except:
         pass
 
-from .config import get_config, SettingsError
 from .clients import (
     CoinGeckoClient,
     EthereumClient,
     GoogleSheetsClient,
-    CoinGeckoClientError,
-    EthereumClientError,
-    GoogleSheetsClientError,
 )
-from .processors import WalletProcessor, BatchProcessor
-from .utils import CacheManager, CacheFactory
+from .config import SettingsError
 from .monitoring.health import HealthChecker
 from .monitoring.metrics import MetricsCollector
+from .processors import BatchProcessor, WalletProcessor
+from .utils import CacheFactory, CacheManager
 
 
 class UnicodeFilter(logging.Filter):
@@ -65,7 +61,7 @@ class UnicodeFilter(logging.Filter):
                 "🪙": "[TOKEN]",
             }
 
-            if hasattr(record, 'msg'):
+            if hasattr(record, "msg"):
                 message = str(record.msg)
                 for emoji, replacement in emoji_replacements.items():
                     message = message.replace(emoji, replacement)
@@ -80,14 +76,14 @@ class WalletTrackerApp:
     def __init__(self):
         """Initialize the application."""
         self.config = None
-        self.cache_manager: Optional[CacheManager] = None
-        self.ethereum_client: Optional[EthereumClient] = None
-        self.coingecko_client: Optional[CoinGeckoClient] = None
-        self.sheets_client: Optional[GoogleSheetsClient] = None
-        self.wallet_processor: Optional[WalletProcessor] = None
-        self.batch_processor: Optional[BatchProcessor] = None
-        self.health_checker: Optional[HealthChecker] = None
-        self.metrics_collector: Optional[MetricsCollector] = None
+        self.cache_manager: CacheManager | None = None
+        self.ethereum_client: EthereumClient | None = None
+        self.coingecko_client: CoinGeckoClient | None = None
+        self.sheets_client: GoogleSheetsClient | None = None
+        self.wallet_processor: WalletProcessor | None = None
+        self.batch_processor: BatchProcessor | None = None
+        self.health_checker: HealthChecker | None = None
+        self.metrics_collector: MetricsCollector | None = None
 
         self._shutdown_requested = False
         self._logger = logging.getLogger(__name__)
@@ -129,6 +125,7 @@ class WalletTrackerApp:
         """Load and validate application configuration."""
         try:
             from .config import get_settings
+
             settings = get_settings()
             self.config = settings.load_config()
 
@@ -167,34 +164,29 @@ class WalletTrackerApp:
         unicode_filter = UnicodeFilter()
         console_handler.addFilter(unicode_filter)
 
-        console_format = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        console_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(console_format)
         handlers.append(console_handler)
 
         # File handler - keep Unicode for file logs
         if log_config.file:
             from logging.handlers import RotatingFileHandler
+
             file_handler = RotatingFileHandler(
                 log_config.file,
                 maxBytes=log_config.max_size_mb * 1024 * 1024,
                 backupCount=log_config.backup_count,
-                encoding='utf-8'  # Explicitly set UTF-8 encoding for file
+                encoding="utf-8",  # Explicitly set UTF-8 encoding for file
             )
             file_handler.setLevel(getattr(logging, log_config.level))
             file_format = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
             )
             file_handler.setFormatter(file_format)
             handlers.append(file_handler)
 
         # Configure root logger
-        logging.basicConfig(
-            level=getattr(logging, log_config.level),
-            handlers=handlers,
-            force=True
-        )
+        logging.basicConfig(level=getattr(logging, log_config.level), handlers=handlers, force=True)
 
         # Reduce noise from external libraries
         logging.getLogger("aiohttp").setLevel(logging.WARNING)
@@ -236,22 +228,13 @@ class WalletTrackerApp:
 
         try:
             # Initialize Ethereum client
-            self.ethereum_client = EthereumClient(
-                config=self.config.ethereum,
-                cache_manager=self.cache_manager
-            )
+            self.ethereum_client = EthereumClient(config=self.config.ethereum, cache_manager=self.cache_manager)
 
             # Initialize CoinGecko client
-            self.coingecko_client = CoinGeckoClient(
-                config=self.config.coingecko,
-                cache_manager=self.cache_manager
-            )
+            self.coingecko_client = CoinGeckoClient(config=self.config.coingecko, cache_manager=self.cache_manager)
 
             # Initialize Google Sheets client
-            self.sheets_client = GoogleSheetsClient(
-                config=self.config.google_sheets,
-                cache_manager=self.cache_manager
-            )
+            self.sheets_client = GoogleSheetsClient(config=self.config.google_sheets, cache_manager=self.cache_manager)
 
             self._logger.info("✅ API clients initialized successfully")
 
@@ -270,7 +253,7 @@ class WalletTrackerApp:
                 ethereum_client=self.ethereum_client,
                 coingecko_client=self.coingecko_client,
                 sheets_client=self.sheets_client,
-                cache_manager=self.cache_manager
+                cache_manager=self.cache_manager,
             )
 
             # Initialize batch processor
@@ -279,7 +262,7 @@ class WalletTrackerApp:
                 ethereum_client=self.ethereum_client,
                 coingecko_client=self.coingecko_client,
                 cache_manager=self.cache_manager,
-                sheets_client=self.sheets_client
+                sheets_client=self.sheets_client,
             )
 
             self._logger.info("✅ Processors initialized successfully")
@@ -298,13 +281,11 @@ class WalletTrackerApp:
                 ethereum_client=self.ethereum_client,
                 coingecko_client=self.coingecko_client,
                 sheets_client=self.sheets_client,
-                cache_manager=self.cache_manager
+                cache_manager=self.cache_manager,
             )
 
             # Initialize metrics collector
-            self.metrics_collector = MetricsCollector(
-                config=self.config
-            )
+            self.metrics_collector = MetricsCollector(config=self.config)
 
             self._logger.info("✅ Monitoring initialized successfully")
 
@@ -354,9 +335,9 @@ class WalletTrackerApp:
         spreadsheet_id: str,
         input_range: str = "A:B",
         output_range: str = "A1",
-        input_worksheet: Optional[str] = None,
-        output_worksheet: Optional[str] = None,
-        dry_run: bool = False
+        input_worksheet: str | None = None,
+        output_worksheet: str | None = None,
+        dry_run: bool = False,
     ) -> dict:
         """Process wallets from Google Sheets.
 
@@ -374,7 +355,7 @@ class WalletTrackerApp:
         if not self.wallet_processor:
             raise RuntimeError("Application not properly initialized")
 
-        self._logger.info(f"📊 Starting wallet processing from Google Sheets")
+        self._logger.info("📊 Starting wallet processing from Google Sheets")
         self._logger.info(f"   Spreadsheet: {spreadsheet_id}")
         self._logger.info(f"   Input range: {input_range}")
         self._logger.info(f"   Dry run: {dry_run}")
@@ -393,17 +374,13 @@ class WalletTrackerApp:
             if self.metrics_collector:
                 await self.metrics_collector.record_processing_run(results)
 
-            return results.get_summary_dict() if hasattr(results, 'get_summary_dict') else results
+            return results.get_summary_dict() if hasattr(results, "get_summary_dict") else results
 
         except Exception as e:
             self._logger.error(f"❌ Wallet processing failed: {e}")
             raise
 
-    async def process_wallet_list(
-        self,
-        addresses: list[dict],
-        dry_run: bool = False
-    ) -> dict:
+    async def process_wallet_list(self, addresses: list[dict], dry_run: bool = False) -> dict:
         """Process a list of wallet addresses.
 
         Args:
@@ -419,15 +396,13 @@ class WalletTrackerApp:
         self._logger.info(f"🔄 Starting batch processing of {len(addresses)} wallets")
 
         try:
-            results = await self.batch_processor.process_wallet_list(
-                addresses=addresses
-            )
+            results = await self.batch_processor.process_wallet_list(addresses=addresses)
 
             # Collect metrics
             if self.metrics_collector:
                 await self.metrics_collector.record_processing_run(results)
 
-            return results.get_summary_dict() if hasattr(results, 'get_summary_dict') else results
+            return results.get_summary_dict() if hasattr(results, "get_summary_dict") else results
 
         except Exception as e:
             self._logger.error(f"❌ Batch processing failed: {e}")
@@ -477,6 +452,7 @@ class WalletTrackerApp:
 
     def setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown."""
+
         def signal_handler(signum, frame):
             self._logger.info(f"📡 Received signal {signum}, initiating graceful shutdown...")
             self._shutdown_requested = True
@@ -526,9 +502,9 @@ class WalletTrackerApp:
         """Run application in interactive mode."""
         self._logger.info("🎮 Starting interactive mode")
 
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("🏦 Crypto Wealth Tracker - Interactive Mode")
-        print("="*50)
+        print("=" * 50)
 
         while not self._shutdown_requested:
             try:
@@ -579,19 +555,16 @@ class WalletTrackerApp:
             output_range = input("Enter output range (default: A1): ").strip() or "A1"
 
             dry_run_input = input("Dry run? (y/N): ").strip().lower()
-            dry_run = dry_run_input in ['y', 'yes']
+            dry_run = dry_run_input in ["y", "yes"]
 
-            print(f"\n🚀 Starting analysis...")
+            print("\n🚀 Starting analysis...")
             print(f"   Spreadsheet: {spreadsheet_id}")
             print(f"   Input range: {input_range}")
             print(f"   Output range: {output_range}")
             print(f"   Dry run: {dry_run}")
 
             results = await self.process_wallets_from_sheets(
-                spreadsheet_id=spreadsheet_id,
-                input_range=input_range,
-                output_range=output_range,
-                dry_run=dry_run
+                spreadsheet_id=spreadsheet_id, input_range=input_range, output_range=output_range, dry_run=dry_run
             )
 
             print("\n✅ Analysis completed!")
@@ -668,9 +641,7 @@ class WalletTrackerApp:
             print(f"Testing with address: {test_address}")
 
             portfolio = await self.ethereum_client.get_wallet_portfolio(
-                wallet_address=test_address,
-                include_metadata=True,
-                include_prices=True
+                wallet_address=test_address, include_metadata=True, include_prices=True
             )
 
             print(f"ETH Balance: {portfolio.eth_balance.balance_eth}")
@@ -699,7 +670,7 @@ class WalletTrackerApp:
 
 
 # Global application instance
-_app_instance: Optional[WalletTrackerApp] = None
+_app_instance: WalletTrackerApp | None = None
 
 
 def get_app() -> WalletTrackerApp:
@@ -723,6 +694,7 @@ async def main() -> None:
 
         # Check if we should run in interactive mode
         import sys
+
         if len(sys.argv) == 1 or "--interactive" in sys.argv:
             await app.run_interactive_mode()
         else:

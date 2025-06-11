@@ -47,13 +47,13 @@ from .google_sheets_client import (
     SheetsPermissionError,
 )
 from .google_sheets_types import (
+    WALLET_RESULT_COLUMNS,
+    WALLET_RESULT_HEADERS,
     SheetConfig,
     SheetRange,
     SummaryData,
     WalletAddress,
     WalletResult,
-    WALLET_RESULT_COLUMNS,
-    WALLET_RESULT_HEADERS,
     create_summary_from_results,
     create_wallet_result_from_portfolio,
 )

@@ -1,10 +1,10 @@
 """Type definitions for batch processing operations and scheduling."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class BatchType(str, Enum):
@@ -95,7 +95,7 @@ class BatchConfig:
     include_inactive_in_results: bool = False
     detailed_error_reporting: bool = True
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate batch configuration and return any errors."""
         errors = []
 
@@ -144,9 +144,9 @@ class BatchProgress:
     # Status
     current_status: str = "running"
     current_operation: str = "initializing"
-    estimated_completion: Optional[datetime] = None
+    estimated_completion: datetime | None = None
 
-    def update_progress(self, job: 'WalletProcessingJob') -> None:
+    def update_progress(self, job: "WalletProcessingJob") -> None:
         """Update progress with completed job."""
         from .wallet_types import WalletStatus
 
@@ -174,12 +174,12 @@ class BatchProgress:
         jobs_processed = self.jobs_completed + self.jobs_failed + self.jobs_skipped + self.jobs_cached
 
         if jobs_processed > 0:
-            elapsed = datetime.now(timezone.utc) - self.started_at
+            elapsed = datetime.now(UTC) - self.started_at
             avg_time_per_job = elapsed.total_seconds() / jobs_processed
             remaining_jobs = self.total_jobs - jobs_processed
             remaining_seconds = remaining_jobs * avg_time_per_job
 
-            self.estimated_completion = datetime.now(timezone.utc) + timedelta(seconds=remaining_seconds)
+            self.estimated_completion = datetime.now(UTC) + timedelta(seconds=remaining_seconds)
 
     def get_progress_percentage(self) -> float:
         """Get completion percentage."""
@@ -207,10 +207,10 @@ class BatchProgress:
 
         return (self.cache_hits / total_requests) * 100
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get progress summary for reporting."""
         jobs_processed = self.jobs_completed + self.jobs_failed + self.jobs_skipped + self.jobs_cached
-        elapsed = datetime.now(timezone.utc) - self.started_at
+        elapsed = datetime.now(UTC) - self.started_at
 
         return {
             "batch_id": self.batch_id,
@@ -231,7 +231,7 @@ class BatchProgress:
                 "skipped": self.jobs_skipped,
                 "cached": self.jobs_cached,
                 "api_calls": self.api_calls_made,
-            }
+            },
         }
 
 
@@ -251,7 +251,7 @@ class ResourceLimits:
     coingecko_api_limit: int = 30
     sheets_api_limit: int = 100
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate resource limits and return any errors."""
         errors = []
 
@@ -277,11 +277,11 @@ class BatchSchedule:
     schedule_type: BatchScheduleType
 
     # Immediate execution
-    execute_at: Optional[datetime] = None
+    execute_at: datetime | None = None
 
     # Recurring execution
-    interval_minutes: Optional[int] = None
-    cron_expression: Optional[str] = None
+    interval_minutes: int | None = None
+    cron_expression: str | None = None
 
     # Conditional execution
     condition_check_interval: int = 60  # seconds
@@ -292,9 +292,9 @@ class BatchSchedule:
     business_hours_only: bool = False
     exclude_weekends: bool = False
 
-    def get_next_execution_time(self, from_time: Optional[datetime] = None) -> Optional[datetime]:
+    def get_next_execution_time(self, from_time: datetime | None = None) -> datetime | None:
         """Calculate next execution time based on schedule."""
-        base_time = from_time or datetime.now(timezone.utc)
+        base_time = from_time or datetime.now(UTC)
 
         if self.schedule_type == BatchScheduleType.IMMEDIATE:
             return base_time
@@ -348,18 +348,18 @@ class BatchMetadata:
     """Metadata for batch operations."""
 
     created_by: str = "system"
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     description: str = ""
     version: str = "1.0"
 
     # Source information
-    source_spreadsheet_id: Optional[str] = None
-    source_range: Optional[str] = None
-    source_row_count: Optional[int] = None
+    source_spreadsheet_id: str | None = None
+    source_range: str | None = None
+    source_row_count: int | None = None
 
     # Output information
-    output_spreadsheet_id: Optional[str] = None
-    output_worksheet: Optional[str] = None
+    output_spreadsheet_id: str | None = None
+    output_worksheet: str | None = None
     output_format: str = "google_sheets"
 
     # Processing preferences
@@ -369,8 +369,8 @@ class BatchMetadata:
 
     # Notification settings
     notify_on_completion: bool = False
-    notification_email: Optional[str] = None
-    notification_webhook: Optional[str] = None
+    notification_email: str | None = None
+    notification_webhook: str | None = None
 
 
 @dataclass
@@ -427,51 +427,51 @@ class BatchQueueItem:
 
     # Timing
     created_at: datetime = field(default_factory=datetime.utcnow)
-    queued_at: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    queued_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Configuration
-    schedule: Optional[BatchSchedule] = None
+    schedule: BatchSchedule | None = None
     metadata: BatchMetadata = field(default_factory=BatchMetadata)
     resource_limits: ResourceLimits = field(default_factory=ResourceLimits)
 
     # Input data
-    input_data: Dict[str, Any] = field(default_factory=dict)
+    input_data: dict[str, Any] = field(default_factory=dict)
 
     # Progress tracking
     progress_percent: float = 0.0
     current_step: str = "pending"
-    estimated_completion: Optional[datetime] = None
+    estimated_completion: datetime | None = None
 
     # Results
-    output_data: Dict[str, Any] = field(default_factory=dict)
-    error_message: Optional[str] = None
-    warning_messages: List[str] = field(default_factory=list)
+    output_data: dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    warning_messages: list[str] = field(default_factory=list)
 
     # Resource usage
     resource_usage: BatchResourceUsage = field(default_factory=BatchResourceUsage)
 
     # Dependencies
-    depends_on: List[str] = field(default_factory=list)  # Other batch IDs
-    blocks: List[str] = field(default_factory=list)  # Batches blocked by this one
+    depends_on: list[str] = field(default_factory=list)  # Other batch IDs
+    blocks: list[str] = field(default_factory=list)  # Batches blocked by this one
 
-    def can_execute(self, completed_batches: List[str]) -> bool:
+    def can_execute(self, completed_batches: list[str]) -> bool:
         """Check if batch can execute based on dependencies."""
         return all(dep in completed_batches for dep in self.depends_on)
 
-    def get_execution_time(self) -> Optional[timedelta]:
+    def get_execution_time(self) -> timedelta | None:
         """Get total execution time if completed."""
         if self.started_at and self.completed_at:
             return self.completed_at - self.started_at
         return None
 
-    def get_queue_time(self) -> Optional[timedelta]:
+    def get_queue_time(self) -> timedelta | None:
         """Get time spent in queue."""
         if self.queued_at and self.started_at:
             return self.started_at - self.queued_at
         elif self.queued_at:
-            return datetime.now(timezone.utc) - self.queued_at
+            return datetime.now(UTC) - self.queued_at
         return None
 
     def is_expired(self, max_age_hours: int = 24) -> bool:
@@ -479,10 +479,10 @@ class BatchQueueItem:
         if self.state in [BatchState.COMPLETED, BatchState.FAILED, BatchState.CANCELLED]:
             return False
 
-        age = datetime.now(timezone.utc) - self.created_at
+        age = datetime.now(UTC) - self.created_at
         return age.total_seconds() > (max_age_hours * 3600)
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get batch summary for reporting."""
         execution_time = self.get_execution_time()
         queue_time = self.get_queue_time()
@@ -536,9 +536,9 @@ class BatchQueueStats:
 
     # Time tracking
     oldest_pending_batch_age_hours: float = 0.0
-    last_completed_at: Optional[datetime] = None
+    last_completed_at: datetime | None = None
 
-    def update_from_queue(self, queue_items: List[BatchQueueItem]) -> None:
+    def update_from_queue(self, queue_items: list[BatchQueueItem]) -> None:
         """Update statistics from current queue state."""
         if not queue_items:
             return
@@ -546,7 +546,8 @@ class BatchQueueStats:
         # Count by state
         self.total_batches = len(queue_items)
         self.pending_batches = len(
-            [b for b in queue_items if b.state in [BatchState.CREATED, BatchState.QUEUED, BatchState.SCHEDULED]])
+            [b for b in queue_items if b.state in [BatchState.CREATED, BatchState.QUEUED, BatchState.SCHEDULED]]
+        )
         self.running_batches = len([b for b in queue_items if b.state == BatchState.RUNNING])
         self.completed_batches = len([b for b in queue_items if b.state == BatchState.COMPLETED])
         self.failed_batches = len([b for b in queue_items if b.state == BatchState.FAILED])
@@ -555,8 +556,9 @@ class BatchQueueStats:
         completed_items = [b for b in queue_items if b.state == BatchState.COMPLETED]
 
         if completed_items:
-            execution_times = [b.get_execution_time().total_seconds() for b in completed_items if
-                               b.get_execution_time()]
+            execution_times = [
+                b.get_execution_time().total_seconds() for b in completed_items if b.get_execution_time()
+            ]
             if execution_times:
                 self.average_execution_time_seconds = sum(execution_times) / len(execution_times)
 
@@ -565,7 +567,7 @@ class BatchQueueStats:
                 self.average_queue_time_seconds = sum(queue_times) / len(queue_times)
 
             # Calculate throughput (completed batches in last hour)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             hour_ago = now - timedelta(hours=1)
             recent_completions = [b for b in completed_items if b.completed_at and b.completed_at > hour_ago]
             self.throughput_batches_per_hour = len(recent_completions)
@@ -594,7 +596,7 @@ class BatchQueueStats:
         pending_items = [b for b in queue_items if b.state in [BatchState.CREATED, BatchState.QUEUED]]
         if pending_items:
             oldest = min(pending_items, key=lambda x: x.created_at)
-            age = datetime.now(timezone.utc) - oldest.created_at
+            age = datetime.now(UTC) - oldest.created_at
             self.oldest_pending_batch_age_hours = age.total_seconds() / 3600
 
 
@@ -605,36 +607,36 @@ class BatchOperation:
     operation_id: str
     operation_type: str
     target_data: Any
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
     # Status tracking
     status: str = "pending"
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Results
-    result: Optional[Any] = None
-    error: Optional[str] = None
-    metrics: Dict[str, float] = field(default_factory=dict)
+    result: Any | None = None
+    error: str | None = None
+    metrics: dict[str, float] = field(default_factory=dict)
 
     def mark_started(self) -> None:
         """Mark operation as started."""
         self.status = "running"
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
 
     def mark_completed(self, result: Any = None) -> None:
         """Mark operation as completed."""
         self.status = "completed"
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.result = result
 
     def mark_failed(self, error: str) -> None:
         """Mark operation as failed."""
         self.status = "failed"
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.error = error
 
-    def get_duration(self) -> Optional[float]:
+    def get_duration(self) -> float | None:
         """Get operation duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -643,12 +645,13 @@ class BatchOperation:
 
 # Utility functions for batch operations
 
+
 def create_wallet_analysis_batch(
-        batch_id: str,
-        addresses: List[Dict[str, str]],
-        priority: QueuePriority = QueuePriority.NORMAL,
-        resource_limits: Optional[ResourceLimits] = None,
-        metadata: Optional[BatchMetadata] = None,
+    batch_id: str,
+    addresses: list[dict[str, str]],
+    priority: QueuePriority = QueuePriority.NORMAL,
+    resource_limits: ResourceLimits | None = None,
+    metadata: BatchMetadata | None = None,
 ) -> BatchQueueItem:
     """Create a wallet analysis batch queue item.
 
@@ -677,9 +680,9 @@ def create_wallet_analysis_batch(
 
 
 def create_price_update_batch(
-        batch_id: str,
-        token_addresses: List[str],
-        priority: QueuePriority = QueuePriority.HIGH,
+    batch_id: str,
+    token_addresses: list[str],
+    priority: QueuePriority = QueuePriority.HIGH,
 ) -> BatchQueueItem:
     """Create a price update batch queue item.
 
@@ -704,11 +707,11 @@ def create_price_update_batch(
 
 
 def create_scheduled_batch(
-        batch_id: str,
-        batch_type: BatchType,
-        schedule_time: datetime,
-        input_data: Dict[str, Any],
-        priority: QueuePriority = QueuePriority.NORMAL,
+    batch_id: str,
+    batch_type: BatchType,
+    schedule_time: datetime,
+    input_data: dict[str, Any],
+    priority: QueuePriority = QueuePriority.NORMAL,
 ) -> BatchQueueItem:
     """Create a scheduled batch queue item.
 
@@ -738,9 +741,9 @@ def create_scheduled_batch(
 
 
 def estimate_batch_resources(
-        wallet_count: int,
-        include_prices: bool = True,
-        enable_cache: bool = True,
+    wallet_count: int,
+    include_prices: bool = True,
+    enable_cache: bool = True,
 ) -> ResourceLimits:
     """Estimate resource requirements for a wallet analysis batch.
 

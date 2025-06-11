@@ -32,7 +32,7 @@ class TestWorkflowStep:
             required=True,
             retry_count=3,
             timeout=30.0,
-            dependencies=["step1", "step2"]
+            dependencies=["step1", "step2"],
         )
 
         assert step.name == "test_step"
@@ -71,7 +71,7 @@ class TestStepResult:
             data={"result": "success"},
             error=None,
             duration=1.5,
-            metadata={"attempt": 1}
+            metadata={"attempt": 1},
         )
 
         assert result.step_name == "test_step"
@@ -84,12 +84,7 @@ class TestStepResult:
 
     def test_step_result_failure(self):
         """Test StepResult for failed step."""
-        result = StepResult(
-            step_name="failed_step",
-            success=False,
-            error="Step failed",
-            duration=0.5
-        )
+        result = StepResult(step_name="failed_step", success=False, error="Step failed", duration=0.5)
 
         assert result.success is False
         assert result.error == "Step failed"
@@ -102,12 +97,7 @@ class TestWorkflow:
 
     def test_workflow_creation(self):
         """Test Workflow creation."""
-        workflow = Workflow(
-            name="test_workflow",
-            description="Test workflow",
-            timeout=3600.0,
-            continue_on_error=True
-        )
+        workflow = Workflow(name="test_workflow", description="Test workflow", timeout=3600.0, continue_on_error=True)
 
         assert workflow.name == "test_workflow"
         assert workflow.description == "Test workflow"
@@ -151,9 +141,9 @@ class TestWorkflow:
             pass
 
         # Chain step additions
-        workflow.add_step("step1", step1) \
-            .add_step("step2", step2, dependencies=["step1"]) \
-            .add_step("step3", step3, dependencies=["step1", "step2"])
+        workflow.add_step("step1", step1).add_step("step2", step2, dependencies=["step1"]).add_step(
+            "step3", step3, dependencies=["step1", "step2"]
+        )
 
         assert len(workflow.steps) == 3
         assert workflow.steps[1].dependencies == ["step1"]
@@ -244,11 +234,9 @@ class TestOrchestrator:
         app.config.is_production.return_value = False
 
         # Mock health check
-        app.health_check = AsyncMock(return_value={
-            "ethereum_client": True,
-            "coingecko_client": True,
-            "sheets_client": True
-        })
+        app.health_check = AsyncMock(
+            return_value={"ethereum_client": True, "coingecko_client": True, "sheets_client": True}
+        )
 
         return app
 
@@ -266,10 +254,7 @@ class TestOrchestrator:
     def test_create_workflow(self, orchestrator):
         """Test workflow creation."""
         workflow = orchestrator.create_workflow(
-            name="test_workflow",
-            description="Test",
-            timeout=300.0,
-            continue_on_error=True
+            name="test_workflow", description="Test", timeout=300.0, continue_on_error=True
         )
 
         assert isinstance(workflow, Workflow)
@@ -446,10 +431,9 @@ class TestOrchestrator:
         progress_updates = []
 
         def progress_callback(wf):
-            progress_updates.append({
-                "completed_steps": len([r for r in wf.results if r.success]),
-                "total_steps": len(wf.steps)
-            })
+            progress_updates.append(
+                {"completed_steps": len([r for r in wf.results if r.success]), "total_steps": len(wf.steps)}
+            )
 
         async def step1(context):
             return "step1_done"
@@ -576,11 +560,7 @@ class TestPrebuiltWorkflows:
     def test_create_wallet_analysis_workflow(self, orchestrator):
         """Test creating wallet analysis workflow."""
         workflow = orchestrator.create_wallet_analysis_workflow(
-            spreadsheet_id="test_sheet_id",
-            input_range="A:B",
-            output_range="C1",
-            batch_size=25,
-            dry_run=True
+            spreadsheet_id="test_sheet_id", input_range="A:B", output_range="C1", batch_size=25, dry_run=True
         )
 
         assert isinstance(workflow, Workflow)
@@ -597,7 +577,7 @@ class TestPrebuiltWorkflows:
             "read_addresses",
             "process_wallets",
             "write_results",
-            "generate_summary"
+            "generate_summary",
         ]
 
         for expected_step in expected_steps:
@@ -616,9 +596,7 @@ class TestPrebuiltWorkflows:
         token_addresses = ["0x123", "0x456"]
 
         workflow = orchestrator.create_price_update_workflow(
-            token_addresses=token_addresses,
-            update_popular=True,
-            cache_duration=7200
+            token_addresses=token_addresses, update_popular=True, cache_duration=7200
         )
 
         assert isinstance(workflow, Workflow)
@@ -631,7 +609,7 @@ class TestPrebuiltWorkflows:
             "update_eth_price",
             "update_stablecoin_prices",
             "update_popular_tokens",
-            "update_specific_tokens"
+            "update_specific_tokens",
         ]
 
         for expected_step in expected_steps:
@@ -647,11 +625,7 @@ class TestPrebuiltWorkflows:
         assert workflow.continue_on_error is True
 
         step_names = [step.name for step in workflow.steps]
-        expected_steps = [
-            "cache_cleanup",
-            "comprehensive_health_check",
-            "refresh_configuration"
-        ]
+        expected_steps = ["cache_cleanup", "comprehensive_health_check", "refresh_configuration"]
 
         for expected_step in expected_steps:
             assert expected_step in step_names
@@ -659,11 +633,11 @@ class TestPrebuiltWorkflows:
     @pytest.mark.asyncio
     async def test_execute_scheduled_maintenance(self, orchestrator):
         """Test executing scheduled maintenance workflow."""
-        with patch.object(orchestrator, 'create_maintenance_workflow') as mock_create:
+        with patch.object(orchestrator, "create_maintenance_workflow") as mock_create:
             mock_workflow = MagicMock()
             mock_create.return_value = mock_workflow
 
-            with patch.object(orchestrator, 'execute_workflow') as mock_execute:
+            with patch.object(orchestrator, "execute_workflow") as mock_execute:
                 mock_execute.return_value = mock_workflow
 
                 result = await orchestrator.execute_scheduled_maintenance()
@@ -677,22 +651,16 @@ class TestPrebuiltWorkflows:
         """Test executing price update workflow."""
         token_addresses = ["0x123", "0x456"]
 
-        with patch.object(orchestrator, 'create_price_update_workflow') as mock_create:
+        with patch.object(orchestrator, "create_price_update_workflow") as mock_create:
             mock_workflow = MagicMock()
             mock_create.return_value = mock_workflow
 
-            with patch.object(orchestrator, 'execute_workflow') as mock_execute:
+            with patch.object(orchestrator, "execute_workflow") as mock_execute:
                 mock_execute.return_value = mock_workflow
 
-                result = await orchestrator.execute_price_update(
-                    token_addresses=token_addresses,
-                    update_popular=False
-                )
+                result = await orchestrator.execute_price_update(token_addresses=token_addresses, update_popular=False)
 
-                mock_create.assert_called_once_with(
-                    token_addresses=token_addresses,
-                    update_popular=False
-                )
+                mock_create.assert_called_once_with(token_addresses=token_addresses, update_popular=False)
                 mock_execute.assert_called_once_with(mock_workflow)
                 assert result == mock_workflow
 
@@ -1084,6 +1052,7 @@ class TestWorkflowPerformance:
         results = {}
 
         for i in range(step_count):
+
             async def step_func(context, step_id=i):
                 await asyncio.sleep(0.001)  # Small delay
                 results[step_id] = f"step_{step_id}_completed"

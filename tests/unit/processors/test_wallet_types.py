@@ -1,9 +1,7 @@
 """Tests for wallet processing types and utilities."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-
-import pytest
 
 from wallet_tracker.processors.wallet_types import (
     ProcessingPriority,
@@ -25,11 +23,7 @@ class TestWalletProcessingJob:
     def test_job_creation(self):
         """Test creating a wallet processing job."""
         job = WalletProcessingJob(
-            address="0x123",
-            label="Test Wallet",
-            row_number=1,
-            priority=ProcessingPriority.HIGH,
-            max_retries=2
+            address="0x123", label="Test Wallet", row_number=1, priority=ProcessingPriority.HIGH, max_retries=2
         )
 
         assert job.address == "0x123"
@@ -307,11 +301,7 @@ class TestUtilityFunctions:
             {"address": "0x789", "label": "Wallet 3", "row_number": 3},
         ]
 
-        jobs = create_jobs_from_addresses(
-            addresses,
-            priority=ProcessingPriority.HIGH,
-            max_retries=5
-        )
+        jobs = create_jobs_from_addresses(addresses, priority=ProcessingPriority.HIGH, max_retries=5)
 
         assert len(jobs) == 3
         for i, job in enumerate(jobs):

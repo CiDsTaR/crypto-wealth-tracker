@@ -4,9 +4,10 @@ import asyncio
 import logging
 import random
 import traceback
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any
 
 from .exceptions import (
     ErrorCategory,
@@ -14,9 +15,7 @@ from .exceptions import (
     RecoveryStrategy,
     WalletTrackerError,
     create_error_from_exception,
-    get_recovery_strategy,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class ErrorHandler:
         base_delay: float = 1.0,
         max_delay: float = 60.0,
         jitter: bool = True,
-        enable_circuit_breaker: bool = True
+        enable_circuit_breaker: bool = True,
     ):
         """Initialize error handler.
 
@@ -57,16 +56,16 @@ class ErrorHandler:
         self.enable_circuit_breaker = enable_circuit_breaker
 
         # Circuit breaker state
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
         # Error statistics
-        self._error_stats: Dict[str, ErrorStats] = {}
+        self._error_stats: dict[str, ErrorStats] = {}
 
         # Registered error callbacks
-        self._error_callbacks: List[Callable[[WalletTrackerError], None]] = []
+        self._error_callbacks: list[Callable[[WalletTrackerError], None]] = []
 
         # Recovery callbacks
-        self._recovery_callbacks: Dict[RecoveryStrategy, List[Callable]] = {}
+        self._recovery_callbacks: dict[RecoveryStrategy, list[Callable]] = {}
 
     def register_error_callback(self, callback: Callable[[WalletTrackerError], None]) -> None:
         """Register callback for error notifications.
@@ -76,11 +75,7 @@ class ErrorHandler:
         """
         self._error_callbacks.append(callback)
 
-    def register_recovery_callback(
-        self,
-        strategy: RecoveryStrategy,
-        callback: Callable
-    ) -> None:
+    def register_recovery_callback(self, strategy: RecoveryStrategy, callback: Callable) -> None:
         """Register callback for specific recovery strategy.
 
         Args:
@@ -92,10 +87,7 @@ class ErrorHandler:
         self._recovery_callbacks[strategy].append(callback)
 
     async def handle_error(
-        self,
-        error: Exception,
-        context: Optional[Dict[str, Any]] = None,
-        operation_name: Optional[str] = None
+        self, error: Exception, context: dict[str, Any] | None = None, operation_name: str | None = None
     ) -> WalletTrackerError:
         """Handle an error with appropriate recovery strategy.
 
@@ -115,7 +107,7 @@ class ErrorHandler:
 
         # Add operation context
         if operation_name:
-            wallet_error.context['operation'] = operation_name
+            wallet_error.context["operation"] = operation_name
 
         # Log the error
         await self._log_error(wallet_error)
@@ -143,11 +135,11 @@ class ErrorHandler:
     async def _log_error(self, error: WalletTrackerError) -> None:
         """Log error with appropriate level based on severity."""
         log_data = {
-            'error_code': error.error_code,
-            'category': error.category.value,
-            'severity': error.severity.value,
-            'recovery_strategy': error.recovery_strategy.value,
-            'context': error.context
+            "error_code": error.error_code,
+            "category": error.category.value,
+            "severity": error.severity.value,
+            "recovery_strategy": error.recovery_strategy.value,
+            "context": error.context,
         }
 
         if error.severity == ErrorSeverity.CRITICAL:
@@ -161,7 +153,9 @@ class ErrorHandler:
 
         # Log stack trace for critical errors
         if error.severity == ErrorSeverity.CRITICAL and error.original_error:
-            logger.critical(f"Stack trace: {traceback.format_exception(type(error.original_error), error.original_error, error.original_error.__traceback__)}")
+            logger.critical(
+                f"Stack trace: {traceback.format_exception(type(error.original_error), error.original_error, error.original_error.__traceback__)}"
+            )
 
     def _update_error_stats(self, error: WalletTrackerError) -> None:
         """Update error statistics."""
@@ -172,13 +166,11 @@ class ErrorHandler:
 
         self._error_stats[key].record_error(error)
 
-    def _get_circuit_breaker(self, operation_name: str) -> 'CircuitBreaker':
+    def _get_circuit_breaker(self, operation_name: str) -> "CircuitBreaker":
         """Get or create circuit breaker for operation."""
         if operation_name not in self._circuit_breakers:
             self._circuit_breakers[operation_name] = CircuitBreaker(
-                failure_threshold=5,
-                recovery_timeout=60.0,
-                expected_exception=Exception
+                failure_threshold=5, recovery_timeout=60.0, expected_exception=Exception
             )
         return self._circuit_breakers[operation_name]
 
@@ -195,10 +187,7 @@ class ErrorHandler:
 
     @asynccontextmanager
     async def handle_operation(
-        self,
-        operation_name: str,
-        max_retries: Optional[int] = None,
-        context: Optional[Dict[str, Any]] = None
+        self, operation_name: str, max_retries: int | None = None, context: dict[str, Any] | None = None
     ):
         """Context manager for handling operations with automatic retry.
 
@@ -250,7 +239,7 @@ class ErrorHandler:
     def _calculate_delay(self, attempt: int, strategy: RecoveryStrategy) -> float:
         """Calculate delay for retry based on strategy."""
         if strategy == RecoveryStrategy.EXPONENTIAL_BACKOFF:
-            delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+            delay = min(self.base_delay * (2**attempt), self.max_delay)
         else:
             delay = self.base_delay
 
@@ -261,32 +250,32 @@ class ErrorHandler:
 
         return max(0.1, delay)  # Minimum 0.1 second delay
 
-    def get_error_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_error_stats(self) -> dict[str, dict[str, Any]]:
         """Get error statistics."""
         stats = {}
 
         for key, error_stats in self._error_stats.items():
             stats[key] = {
-                'total_count': error_stats.total_count,
-                'last_occurrence': error_stats.last_occurrence.isoformat() if error_stats.last_occurrence else None,
-                'severity_distribution': error_stats.severity_distribution,
-                'hourly_rate': error_stats.get_hourly_rate(),
-                'most_common_context': error_stats.get_most_common_context()
+                "total_count": error_stats.total_count,
+                "last_occurrence": error_stats.last_occurrence.isoformat() if error_stats.last_occurrence else None,
+                "severity_distribution": error_stats.severity_distribution,
+                "hourly_rate": error_stats.get_hourly_rate(),
+                "most_common_context": error_stats.get_most_common_context(),
             }
 
         return stats
 
-    def get_circuit_breaker_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_circuit_breaker_stats(self) -> dict[str, dict[str, Any]]:
         """Get circuit breaker statistics."""
         stats = {}
 
         for operation, breaker in self._circuit_breakers.items():
             stats[operation] = {
-                'state': breaker.state.value,
-                'failure_count': breaker.failure_count,
-                'success_count': breaker.success_count,
-                'last_failure_time': breaker.last_failure_time.isoformat() if breaker.last_failure_time else None,
-                'next_attempt_time': breaker.next_attempt_time.isoformat() if breaker.next_attempt_time else None
+                "state": breaker.state.value,
+                "failure_count": breaker.failure_count,
+                "success_count": breaker.success_count,
+                "last_failure_time": breaker.last_failure_time.isoformat() if breaker.last_failure_time else None,
+                "next_attempt_time": breaker.next_attempt_time.isoformat() if breaker.next_attempt_time else None,
             }
 
         return stats
@@ -315,11 +304,11 @@ class ErrorStats:
 
     def __init__(self):
         self.total_count = 0
-        self.first_occurrence: Optional[datetime] = None
-        self.last_occurrence: Optional[datetime] = None
-        self.severity_distribution: Dict[str, int] = {}
-        self.context_frequency: Dict[str, int] = {}
-        self.hourly_occurrences: List[datetime] = []
+        self.first_occurrence: datetime | None = None
+        self.last_occurrence: datetime | None = None
+        self.severity_distribution: dict[str, int] = {}
+        self.context_frequency: dict[str, int] = {}
+        self.hourly_occurrences: list[datetime] = []
 
     def record_error(self, error: WalletTrackerError) -> None:
         """Record an error occurrence."""
@@ -356,7 +345,7 @@ class ErrorStats:
 
         return len(self.hourly_occurrences) / hours_elapsed
 
-    def get_most_common_context(self) -> Optional[str]:
+    def get_most_common_context(self) -> str | None:
         """Get most common context pattern."""
         if not self.context_frequency:
             return None
@@ -366,11 +355,12 @@ class ErrorStats:
 
 from enum import Enum
 
+
 class CircuitState(str, Enum):
     """Circuit breaker states."""
 
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, rejecting requests
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, rejecting requests
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
@@ -388,7 +378,7 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: float = 60.0,
-        expected_exception: Type[Exception] = Exception
+        expected_exception: type[Exception] = Exception,
     ):
         """Initialize circuit breaker.
 
@@ -404,8 +394,8 @@ class CircuitBreaker:
         self.failure_count = 0
         self.success_count = 0
         self.state = CircuitState.CLOSED
-        self.last_failure_time: Optional[datetime] = None
-        self.next_attempt_time: Optional[datetime] = None
+        self.last_failure_time: datetime | None = None
+        self.next_attempt_time: datetime | None = None
 
     def record_success(self) -> None:
         """Record a successful operation."""
@@ -422,9 +412,11 @@ class CircuitBreaker:
         self.failure_count += 1
         self.last_failure_time = datetime.now(UTC)
 
-        if self.state == CircuitState.CLOSED and self.failure_count >= self.failure_threshold:
-            self._open_circuit()
-        elif self.state == CircuitState.HALF_OPEN:
+        if (
+            self.state == CircuitState.CLOSED
+            and self.failure_count >= self.failure_threshold
+            or self.state == CircuitState.HALF_OPEN
+        ):
             self._open_circuit()
 
     def _open_circuit(self) -> None:
@@ -465,33 +457,26 @@ class CircuitBreakerOpenError(WalletTrackerError):
             severity=ErrorSeverity.MEDIUM,
             category=ErrorCategory.SYSTEM_RESOURCE,
             recovery_strategy=RecoveryStrategy.EXPONENTIAL_BACKOFF,
-            **kwargs
+            **kwargs,
         )
 
 
 # Specialized error handlers for different components
 
+
 class APIErrorHandler(ErrorHandler):
     """Specialized error handler for API operations."""
 
     def __init__(self, **kwargs):
-        super().__init__(
-            max_retries=5,
-            base_delay=2.0,
-            max_delay=120.0,
-            **kwargs
-        )
+        super().__init__(max_retries=5, base_delay=2.0, max_delay=120.0, **kwargs)
 
         # Register specific recovery strategies
-        self.register_recovery_callback(
-            RecoveryStrategy.EXPONENTIAL_BACKOFF,
-            self._handle_rate_limit_recovery
-        )
+        self.register_recovery_callback(RecoveryStrategy.EXPONENTIAL_BACKOFF, self._handle_rate_limit_recovery)
 
     async def _handle_rate_limit_recovery(self, error: WalletTrackerError) -> None:
         """Handle rate limit recovery."""
-        if 'retry_after' in error.context:
-            retry_after = error.context['retry_after']
+        if "retry_after" in error.context:
+            retry_after = error.context["retry_after"]
             logger.info(f"Rate limit recovery: waiting {retry_after} seconds")
             await asyncio.sleep(retry_after)
 
@@ -500,13 +485,7 @@ class NetworkErrorHandler(ErrorHandler):
     """Specialized error handler for network operations."""
 
     def __init__(self, **kwargs):
-        super().__init__(
-            max_retries=3,
-            base_delay=1.0,
-            max_delay=30.0,
-            jitter=True,
-            **kwargs
-        )
+        super().__init__(max_retries=3, base_delay=1.0, max_delay=30.0, jitter=True, **kwargs)
 
 
 class ProcessingErrorHandler(ErrorHandler):
@@ -518,27 +497,24 @@ class ProcessingErrorHandler(ErrorHandler):
             base_delay=0.5,
             max_delay=10.0,
             enable_circuit_breaker=False,  # Don't use circuit breaker for processing
-            **kwargs
+            **kwargs,
         )
 
         # Register checkpoint recovery
-        self.register_recovery_callback(
-            RecoveryStrategy.FALLBACK,
-            self._handle_checkpoint_recovery
-        )
+        self.register_recovery_callback(RecoveryStrategy.FALLBACK, self._handle_checkpoint_recovery)
 
     async def _handle_checkpoint_recovery(self, error: WalletTrackerError) -> None:
         """Handle recovery using checkpoints."""
-        if 'checkpoint_data' in error.context:
+        if "checkpoint_data" in error.context:
             logger.info("Attempting recovery from checkpoint")
             # Implementation would depend on specific checkpoint format
 
 
 # Global error handler instances
-_global_error_handler: Optional[ErrorHandler] = None
-_api_error_handler: Optional[APIErrorHandler] = None
-_network_error_handler: Optional[NetworkErrorHandler] = None
-_processing_error_handler: Optional[ProcessingErrorHandler] = None
+_global_error_handler: ErrorHandler | None = None
+_api_error_handler: APIErrorHandler | None = None
+_network_error_handler: NetworkErrorHandler | None = None
+_processing_error_handler: ProcessingErrorHandler | None = None
 
 
 def get_global_error_handler() -> ErrorHandler:
@@ -575,10 +551,10 @@ def get_processing_error_handler() -> ProcessingErrorHandler:
 
 # Decorator for automatic error handling
 def handle_errors(
-    operation_name: Optional[str] = None,
-    handler: Optional[ErrorHandler] = None,
-    max_retries: Optional[int] = None,
-    context: Optional[Dict[str, Any]] = None
+    operation_name: str | None = None,
+    handler: ErrorHandler | None = None,
+    max_retries: int | None = None,
+    context: dict[str, Any] | None = None,
 ):
     """Decorator for automatic error handling.
 
@@ -588,6 +564,7 @@ def handle_errors(
         max_retries: Override max retries
         context: Additional context
     """
+
     def decorator(func):
         async def wrapper(*args, **kwargs):
             error_handler = handler or get_global_error_handler()
@@ -597,6 +574,7 @@ def handle_errors(
                 return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -604,9 +582,9 @@ def handle_errors(
 @asynccontextmanager
 async def error_context(
     operation_name: str,
-    handler: Optional[ErrorHandler] = None,
-    max_retries: Optional[int] = None,
-    context: Optional[Dict[str, Any]] = None
+    handler: ErrorHandler | None = None,
+    max_retries: int | None = None,
+    context: dict[str, Any] | None = None,
 ):
     """Context manager for error handling.
 
@@ -624,11 +602,9 @@ async def error_context(
 
 # Utility functions
 
+
 async def handle_and_log_error(
-    error: Exception,
-    operation_name: str,
-    context: Optional[Dict[str, Any]] = None,
-    handler: Optional[ErrorHandler] = None
+    error: Exception, operation_name: str, context: dict[str, Any] | None = None, handler: ErrorHandler | None = None
 ) -> WalletTrackerError:
     """Handle and log an error.
 
@@ -648,14 +624,12 @@ async def handle_and_log_error(
 def setup_error_logging() -> None:
     """Setup centralized error logging."""
     # Configure logging for error handling
-    error_logger = logging.getLogger('wallet_tracker.errors')
+    error_logger = logging.getLogger("wallet_tracker.errors")
     error_logger.setLevel(logging.INFO)
 
     # Add structured logging handler
     handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     error_logger.addHandler(handler)
 
@@ -683,16 +657,11 @@ def setup_error_callbacks() -> None:
 
 # Exception classes for specific error conditions
 
+
 class RetryExhaustedError(WalletTrackerError):
     """Raised when all retry attempts are exhausted."""
 
-    def __init__(
-        self,
-        operation_name: str,
-        attempts: int,
-        last_error: Exception,
-        **kwargs
-    ):
+    def __init__(self, operation_name: str, attempts: int, last_error: Exception, **kwargs):
         message = f"Operation '{operation_name}' failed after {attempts} attempts"
 
         super().__init__(
@@ -700,13 +669,9 @@ class RetryExhaustedError(WalletTrackerError):
             severity=ErrorSeverity.HIGH,
             category=ErrorCategory.SYSTEM_RESOURCE,
             recovery_strategy=RecoveryStrategy.USER_INTERVENTION,
-            context={
-                'operation_name': operation_name,
-                'attempts': attempts,
-                'last_error': str(last_error)
-            },
+            context={"operation_name": operation_name, "attempts": attempts, "last_error": str(last_error)},
             original_error=last_error,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -719,11 +684,12 @@ class ErrorHandlerError(WalletTrackerError):
             severity=ErrorSeverity.HIGH,
             category=ErrorCategory.SYSTEM_RESOURCE,
             recovery_strategy=RecoveryStrategy.RESTART,
-            **kwargs
+            **kwargs,
         )
 
 
 # Error aggregation and reporting
+
 
 class ErrorReport:
     """Generate error reports and summaries."""
@@ -731,7 +697,7 @@ class ErrorReport:
     def __init__(self, error_handler: ErrorHandler):
         self.error_handler = error_handler
 
-    def generate_summary(self, time_range_hours: int = 24) -> Dict[str, Any]:
+    def generate_summary(self, time_range_hours: int = 24) -> dict[str, Any]:
         """Generate error summary report.
 
         Args:
@@ -744,44 +710,36 @@ class ErrorReport:
         circuit_stats = self.error_handler.get_circuit_breaker_stats()
 
         # Calculate totals
-        total_errors = sum(stats['total_count'] for stats in error_stats.values())
+        total_errors = sum(stats["total_count"] for stats in error_stats.values())
 
         # Group by category
         category_counts = {}
         severity_counts = {}
 
         for key, stats in error_stats.items():
-            category = key.split(':')[0]
-            category_counts[category] = category_counts.get(category, 0) + stats['total_count']
+            category = key.split(":")[0]
+            category_counts[category] = category_counts.get(category, 0) + stats["total_count"]
 
-            for severity, count in stats['severity_distribution'].items():
+            for severity, count in stats["severity_distribution"].items():
                 severity_counts[severity] = severity_counts.get(severity, 0) + count
 
         # Top errors
-        top_errors = sorted(
-            error_stats.items(),
-            key=lambda x: x[1]['total_count'],
-            reverse=True
-        )[:10]
+        top_errors = sorted(error_stats.items(), key=lambda x: x[1]["total_count"], reverse=True)[:10]
 
         return {
-            'time_range_hours': time_range_hours,
-            'total_errors': total_errors,
-            'category_distribution': category_counts,
-            'severity_distribution': severity_counts,
-            'top_errors': [
-                {
-                    'error_type': key,
-                    'count': stats['total_count'],
-                    'hourly_rate': stats['hourly_rate']
-                }
+            "time_range_hours": time_range_hours,
+            "total_errors": total_errors,
+            "category_distribution": category_counts,
+            "severity_distribution": severity_counts,
+            "top_errors": [
+                {"error_type": key, "count": stats["total_count"], "hourly_rate": stats["hourly_rate"]}
                 for key, stats in top_errors
             ],
-            'circuit_breaker_status': circuit_stats,
-            'generated_at': datetime.now(UTC).isoformat()
+            "circuit_breaker_status": circuit_stats,
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
-    def get_recommendations(self) -> List[str]:
+    def get_recommendations(self) -> list[str]:
         """Get recommendations based on error patterns.
 
         Returns:
@@ -793,21 +751,18 @@ class ErrorReport:
 
         # Check for high error rates
         high_rate_errors = [
-            key for key, stats in error_stats.items()
-            if stats['hourly_rate'] > 10  # More than 10 errors per hour
+            key
+            for key, stats in error_stats.items()
+            if stats["hourly_rate"] > 10  # More than 10 errors per hour
         ]
 
         if high_rate_errors:
             recommendations.append(
-                f"High error rates detected for: {', '.join(high_rate_errors)}. "
-                "Consider investigating root causes."
+                f"High error rates detected for: {', '.join(high_rate_errors)}. Consider investigating root causes."
             )
 
         # Check for open circuit breakers
-        open_circuits = [
-            name for name, stats in circuit_stats.items()
-            if stats['state'] == 'open'
-        ]
+        open_circuits = [name for name, stats in circuit_stats.items() if stats["state"] == "open"]
 
         if open_circuits:
             recommendations.append(
@@ -816,15 +771,11 @@ class ErrorReport:
             )
 
         # Check for critical errors
-        critical_errors = [
-            key for key, stats in error_stats.items()
-            if 'critical' in stats['severity_distribution']
-        ]
+        critical_errors = [key for key, stats in error_stats.items() if "critical" in stats["severity_distribution"]]
 
         if critical_errors:
             recommendations.append(
-                f"Critical errors detected: {', '.join(critical_errors)}. "
-                "Immediate attention required."
+                f"Critical errors detected: {', '.join(critical_errors)}. Immediate attention required."
             )
 
         if not recommendations:

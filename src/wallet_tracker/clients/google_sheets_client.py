@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -13,11 +13,8 @@ from ..config import GoogleSheetsConfig
 from ..utils import CacheManager
 from .google_sheets_types import (
     WALLET_RESULT_HEADERS,
-    SheetConfig,
     SheetRange,
-    SummaryData,
     WalletAddress,
-    WalletResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,7 +153,7 @@ class GoogleSheetsClient:
         range_name: str = "A:B",
         worksheet_name: str = None,
         skip_header: bool = True,
-    ) -> List[WalletAddress]:
+    ) -> list[WalletAddress]:
         """Read wallet addresses from Google Sheets.
 
         Args:
@@ -241,7 +238,7 @@ class GoogleSheetsClient:
             logger.error(f"❌ Error reading wallet addresses: {e}")
             raise SheetsAPIError(f"Failed to read wallet addresses: {e}") from e
 
-    def _read_sheet_values(self, spreadsheet_id: str, range_name: str, worksheet_name: str = None) -> List[List[str]]:
+    def _read_sheet_values(self, spreadsheet_id: str, range_name: str, worksheet_name: str = None) -> list[list[str]]:
         """Read values from sheet (blocking operation for thread pool)."""
         worksheet = self._get_worksheet(spreadsheet_id, worksheet_name)
         return worksheet.get(range_name)
@@ -249,7 +246,7 @@ class GoogleSheetsClient:
     async def write_wallet_results(
         self,
         spreadsheet_id: str,
-        wallet_results: List[Dict[str, Any]],  # Changed from List[WalletResult] to allow dicts
+        wallet_results: list[dict[str, Any]],  # Changed from List[WalletResult] to allow dicts
         range_start: str = "A1",
         worksheet_name: str | None = None,
         include_header: bool = True,
@@ -304,11 +301,11 @@ class GoogleSheetsClient:
     def _write_results_sync(
         self,
         spreadsheet_id: str,
-        wallet_results: List[Dict[str, Any]],
+        wallet_results: list[dict[str, Any]],
         range_start: str,
         worksheet_name: str | None,
         include_header: bool,
-        clear_existing: bool
+        clear_existing: bool,
     ) -> bool:
         """Write results synchronously (for thread pool execution)."""
         worksheet = self._get_worksheet(spreadsheet_id, worksheet_name)
@@ -362,7 +359,7 @@ class GoogleSheetsClient:
     async def create_summary_sheet(
         self,
         spreadsheet_id: str,
-        summary_data: Dict[str, Any],  # Changed from SummaryData to allow dicts
+        summary_data: dict[str, Any],  # Changed from SummaryData to allow dicts
         worksheet_name: str = "Summary",
     ) -> bool:
         """Create a summary sheet with overall statistics.
@@ -396,7 +393,7 @@ class GoogleSheetsClient:
             logger.error(f"❌ Error creating summary sheet: {e}")
             raise SheetsAPIError(f"Failed to create summary sheet: {e}") from e
 
-    def _create_summary_sync(self, spreadsheet_id: str, summary_data: Dict[str, Any], worksheet_name: str) -> bool:
+    def _create_summary_sync(self, spreadsheet_id: str, summary_data: dict[str, Any], worksheet_name: str) -> bool:
         """Create summary sheet synchronously."""
         worksheet = self._get_worksheet(spreadsheet_id, worksheet_name)
         worksheet.clear()  # Clear existing content
@@ -420,8 +417,16 @@ class GoogleSheetsClient:
             ["🪙 Top Holdings by Value"],
             ["Token", "Total Value (USD)", "# Holders"],
             ["ETH", self._format_usd_value(summary_data.get("eth_total_value", 0)), summary_data.get("eth_holders", 0)],
-            ["USDC", self._format_usd_value(summary_data.get("usdc_total_value", 0)), summary_data.get("usdc_holders", 0)],
-            ["USDT", self._format_usd_value(summary_data.get("usdt_total_value", 0)), summary_data.get("usdt_holders", 0)],
+            [
+                "USDC",
+                self._format_usd_value(summary_data.get("usdc_total_value", 0)),
+                summary_data.get("usdc_holders", 0),
+            ],
+            [
+                "USDT",
+                self._format_usd_value(summary_data.get("usdt_total_value", 0)),
+                summary_data.get("usdt_holders", 0),
+            ],
             ["DAI", self._format_usd_value(summary_data.get("dai_total_value", 0)), summary_data.get("dai_holders", 0)],
             [""],
             ["⏱️ Analysis Information"],
@@ -545,7 +550,7 @@ class GoogleSheetsClient:
         except Exception as e:
             logger.warning(f"⚠️ Failed to format summary sheet: {e}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get client statistics."""
         return {
             "read_operations": self._stats["read_operations"],

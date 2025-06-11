@@ -2,22 +2,22 @@
 
 import asyncio
 import time
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from wallet_tracker.utils.rate_limiter import (
-    RateLimit,
-    RateLimitStrategy,
-    RateLimitScope,
-    RateLimitStatus,
-    TokenBucketLimiter,
-    SlidingWindowLimiter,
     AdaptiveLimiter,
+    RateLimit,
     RateLimiterManager,
-    create_ethereum_rate_limiter,
+    RateLimitStatus,
+    RateLimitStrategy,
+    SlidingWindowLimiter,
+    TokenBucketLimiter,
     create_coingecko_rate_limiter,
+    create_ethereum_rate_limiter,
     create_sheets_rate_limiter,
-    rate_limited
+    rate_limited,
 )
 
 
@@ -27,10 +27,7 @@ class TestRateLimit:
     def test_valid_configuration(self):
         """Test valid rate limit configuration."""
         rate_limit = RateLimit(
-            requests_per_second=10.0,
-            requests_per_minute=600,
-            burst_size=20,
-            strategy=RateLimitStrategy.TOKEN_BUCKET
+            requests_per_second=10.0, requests_per_minute=600, burst_size=20, strategy=RateLimitStrategy.TOKEN_BUCKET
         )
 
         assert rate_limit.requests_per_second == 10.0
@@ -63,11 +60,7 @@ class TestTokenBucketLimiter:
     @pytest.fixture
     def rate_limit(self):
         """Create rate limit configuration for testing."""
-        return RateLimit(
-            requests_per_second=10.0,
-            burst_size=20,
-            strategy=RateLimitStrategy.TOKEN_BUCKET
-        )
+        return RateLimit(requests_per_second=10.0, burst_size=20, strategy=RateLimitStrategy.TOKEN_BUCKET)
 
     @pytest.fixture
     def limiter(self, rate_limit):
@@ -147,11 +140,7 @@ class TestSlidingWindowLimiter:
     @pytest.fixture
     def rate_limit(self):
         """Create rate limit configuration for testing."""
-        return RateLimit(
-            requests_per_second=10.0,
-            requests_per_minute=600,
-            strategy=RateLimitStrategy.SLIDING_WINDOW
-        )
+        return RateLimit(requests_per_second=10.0, requests_per_minute=600, strategy=RateLimitStrategy.SLIDING_WINDOW)
 
     @pytest.fixture
     def limiter(self, rate_limit):
@@ -184,7 +173,7 @@ class TestSlidingWindowLimiter:
             await limiter.acquire(1)
 
         # Mock time advancement
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             mock_time.return_value = time.time() + 30  # Advance 30 seconds
 
             # Should still be limited (only half window expired)
@@ -206,10 +195,7 @@ class TestAdaptiveLimiter:
     @pytest.fixture
     def rate_limit(self):
         """Create rate limit configuration for testing."""
-        return RateLimit(
-            requests_per_second=10.0,
-            strategy=RateLimitStrategy.ADAPTIVE
-        )
+        return RateLimit(requests_per_second=10.0, strategy=RateLimitStrategy.ADAPTIVE)
 
     @pytest.fixture
     def limiter(self, rate_limit):
@@ -230,7 +216,7 @@ class TestAdaptiveLimiter:
             await limiter.report_response(success=False, response_time=1.0)
 
         # Trigger adaptation check
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             mock_time.return_value = time.time() + 31  # Force adaptation interval
 
             # Should adapt to slower rate due to errors
@@ -251,7 +237,7 @@ class TestAdaptiveLimiter:
             await limiter.report_response(success=True, response_time=0.1)
 
         # Trigger adaptation
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             mock_time.return_value = time.time() + 31
 
             original_rate = limiter.current_rate
@@ -269,7 +255,7 @@ class TestAdaptiveLimiter:
 
         # Trigger multiple adaptations
         for i in range(10):
-            with patch('time.time') as mock_time:
+            with patch("time.time") as mock_time:
                 mock_time.return_value = time.time() + (i + 1) * 31
                 await limiter.acquire(1)
 
@@ -329,10 +315,7 @@ class TestRateLimiterManager:
     @pytest.mark.asyncio
     async def test_report_response_to_adaptive(self, manager):
         """Test reporting responses to adaptive limiter."""
-        adaptive_limit = RateLimit(
-            requests_per_second=10.0,
-            strategy=RateLimitStrategy.ADAPTIVE
-        )
+        adaptive_limit = RateLimit(requests_per_second=10.0, strategy=RateLimitStrategy.ADAPTIVE)
         manager.register_limiter("adaptive_service", adaptive_limit)
 
         # Should not raise error
@@ -545,7 +528,7 @@ class TestRateLimitIntegration:
         rate_limit = RateLimit(
             requests_per_second=2.0,
             requests_per_minute=10,  # Small window for testing
-            strategy=RateLimitStrategy.SLIDING_WINDOW
+            strategy=RateLimitStrategy.SLIDING_WINDOW,
         )
         limiter = SlidingWindowLimiter(rate_limit)
 
@@ -687,7 +670,7 @@ class TestRateLimitEdgeCases:
         assert len(limiter.requests) == 10
 
         # Mock time advancement to expire requests
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             mock_time.return_value = time.time() + 70  # Beyond window
 
             # Next acquire should clean up old requests

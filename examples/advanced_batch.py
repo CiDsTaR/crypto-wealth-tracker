@@ -13,38 +13,21 @@ import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
+from typing import Any
 
-from wallet_tracker.app import Application, create_application
-from wallet_tracker.config import (
-    AppConfig,
-    get_config,
-    ProcessingConfig,
-    CacheConfig,
-    EthereumConfig,
-    CoinGeckoConfig
-)
-from wallet_tracker.processors.batch_types import (
-    BatchConfig,
-    BatchProgress,
-    QueuePriority,
-    estimate_batch_resources
-)
+from wallet_tracker.app import create_application
+from wallet_tracker.processors.batch_types import BatchConfig, BatchProgress, QueuePriority, estimate_batch_resources
 from wallet_tracker.processors.wallet_types import (
     ProcessingPriority,
-    WalletProcessingJob,
     create_jobs_from_addresses,
-    group_jobs_by_priority
+    group_jobs_by_priority,
 )
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -67,20 +50,12 @@ async def example_1_large_scale_batch():
 
     # Add real addresses
     for i, addr in enumerate(real_addresses):
-        test_addresses.append({
-            "address": addr,
-            "label": f"Real Wallet {i + 1}",
-            "row_number": i + 1
-        })
+        test_addresses.append({"address": addr, "label": f"Real Wallet {i + 1}", "row_number": i + 1})
 
     # Generate some test addresses (these may not exist, but demonstrate the pattern)
     for i in range(47):  # Total 50 addresses
         fake_addr = f"0x{''.join([f'{j:02x}' for j in range(20)])}"  # Generate fake address
-        test_addresses.append({
-            "address": fake_addr,
-            "label": f"Test Wallet {i + 4}",
-            "row_number": i + 4
-        })
+        test_addresses.append({"address": fake_addr, "label": f"Test Wallet {i + 4}", "row_number": i + 4})
 
     print(f"📊 Processing {len(test_addresses)} wallets in optimized batches")
 
@@ -88,12 +63,10 @@ async def example_1_large_scale_batch():
         try:
             # Estimate resource requirements
             estimated_resources = estimate_batch_resources(
-                wallet_count=len(test_addresses),
-                include_prices=True,
-                enable_cache=True
+                wallet_count=len(test_addresses), include_prices=True, enable_cache=True
             )
 
-            print(f"📋 Estimated Resources:")
+            print("📋 Estimated Resources:")
             print(f"  Memory: {estimated_resources.max_memory_mb}MB")
             print(f"  Processing Time: {estimated_resources.max_processing_time_minutes}min")
             print(f"  API Calls/min: {estimated_resources.max_api_calls_per_minute}")
@@ -109,10 +82,10 @@ async def example_1_large_scale_batch():
                 use_cache=True,
                 skip_inactive_wallets=True,
                 inactive_threshold_days=180,  # 6 months
-                min_value_threshold_usd=Decimal("10.0")  # Skip very low value wallets
+                min_value_threshold_usd=Decimal("10.0"),  # Skip very low value wallets
             )
 
-            print(f"⚙️ Custom Batch Configuration:")
+            print("⚙️ Custom Batch Configuration:")
             print(f"  Batch Size: {custom_config.batch_size}")
             print(f"  Max Concurrent: {custom_config.max_concurrent_jobs_per_batch}")
             print(f"  Request Delay: {custom_config.request_delay_seconds}s")
@@ -123,34 +96,36 @@ async def example_1_large_scale_batch():
 
             def progress_callback(progress: BatchProgress):
                 """Track progress updates."""
-                progress_updates.append({
-                    'timestamp': datetime.now(timezone.utc),
-                    'completed': progress.jobs_completed,
-                    'failed': progress.jobs_failed,
-                    'skipped': progress.jobs_skipped,
-                    'total_value': float(progress.total_value_processed),
-                    'percentage': progress.get_progress_percentage()
-                })
+                progress_updates.append(
+                    {
+                        "timestamp": datetime.now(UTC),
+                        "completed": progress.jobs_completed,
+                        "failed": progress.jobs_failed,
+                        "skipped": progress.jobs_skipped,
+                        "total_value": float(progress.total_value_processed),
+                        "percentage": progress.get_progress_percentage(),
+                    }
+                )
 
                 if len(progress_updates) % 10 == 0 or progress.get_progress_percentage() >= 100:
-                    print(f"📈 Progress: {progress.get_progress_percentage():.1f}% "
-                          f"({progress.jobs_completed}✅ {progress.jobs_failed}❌ {progress.jobs_skipped}⏭️) "
-                          f"${progress.total_value_processed:,.0f}")
+                    print(
+                        f"📈 Progress: {progress.get_progress_percentage():.1f}% "
+                        f"({progress.jobs_completed}✅ {progress.jobs_failed}❌ {progress.jobs_skipped}⏭️) "
+                        f"${progress.total_value_processed:,.0f}"
+                    )
 
             # Execute batch processing
             start_time = time.time()
 
             results = await app.batch_processor.process_wallet_list(
-                addresses=test_addresses,
-                config_override=custom_config,
-                progress_callback=progress_callback
+                addresses=test_addresses, config_override=custom_config, progress_callback=progress_callback
             )
 
             end_time = time.time()
             total_duration = end_time - start_time
 
             # Analysis of results
-            print(f"\n📊 Large-Scale Processing Results:")
+            print("\n📊 Large-Scale Processing Results:")
             print(f"  Total Duration: {total_duration:.1f}s ({total_duration / 60:.1f}min)")
             print(f"  Wallets Processed: {results.wallets_processed}")
             print(f"  Processing Rate: {results.wallets_processed / total_duration:.1f} wallets/second")
@@ -160,11 +135,12 @@ async def example_1_large_scale_batch():
 
             # Save detailed progress data
             progress_file = Path("large_batch_progress.json")
-            with open(progress_file, 'w') as f:
-                json.dump([
-                    {**update, 'timestamp': update['timestamp'].isoformat()}
-                    for update in progress_updates
-                ], f, indent=2)
+            with open(progress_file, "w") as f:
+                json.dump(
+                    [{**update, "timestamp": update["timestamp"].isoformat()} for update in progress_updates],
+                    f,
+                    indent=2,
+                )
 
             print(f"💾 Progress data saved to: {progress_file}")
 
@@ -185,11 +161,9 @@ async def example_2_priority_based_processing():
     wallet_data = [
         # High priority - known high-value wallets
         {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "label": "Vitalik", "priority": "HIGH"},
-
         # Normal priority - regular wallets
         {"address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B", "label": "Regular 1", "priority": "NORMAL"},
         {"address": "0x8ba1f109551bD432803012645Hac136c73F825e01", "label": "Regular 2", "priority": "NORMAL"},
-
         # Low priority - test or less important wallets
         {"address": "0x123456789abcdef123456789abcdef1234567890", "label": "Test 1", "priority": "LOW"},
         {"address": "0xabcdef123456789abcdef123456789abcdef12345", "label": "Test 2", "priority": "LOW"},
@@ -200,11 +174,7 @@ async def example_2_priority_based_processing():
             # Convert to processing format with priorities
             addresses = []
             for i, wallet in enumerate(wallet_data):
-                addresses.append({
-                    "address": wallet["address"],
-                    "label": wallet["label"],
-                    "row_number": i + 1
-                })
+                addresses.append({"address": wallet["address"], "label": wallet["label"], "row_number": i + 1})
 
             # Create jobs with priorities
             jobs = create_jobs_from_addresses(addresses)
@@ -213,16 +183,16 @@ async def example_2_priority_based_processing():
             priority_map = {
                 "HIGH": ProcessingPriority.HIGH,
                 "NORMAL": ProcessingPriority.NORMAL,
-                "LOW": ProcessingPriority.LOW
+                "LOW": ProcessingPriority.LOW,
             }
 
-            for job, wallet in zip(jobs, wallet_data):
+            for job, wallet in zip(jobs, wallet_data, strict=False):
                 job.priority = priority_map.get(wallet.get("priority", "NORMAL"), ProcessingPriority.NORMAL)
 
             # Group jobs by priority
             priority_groups = group_jobs_by_priority(jobs)
 
-            print(f"📊 Priority Distribution:")
+            print("📊 Priority Distribution:")
             for priority, job_list in priority_groups.items():
                 print(f"  {priority.value}: {len(job_list)} wallets")
 
@@ -240,11 +210,9 @@ async def example_2_priority_based_processing():
                 # Convert jobs back to address format for processing
                 priority_addresses = []
                 for job in priority_jobs:
-                    priority_addresses.append({
-                        "address": job.address,
-                        "label": job.label,
-                        "row_number": job.row_number
-                    })
+                    priority_addresses.append(
+                        {"address": job.address, "label": job.label, "row_number": job.row_number}
+                    )
 
                 # Custom configuration based on priority
                 if priority == ProcessingPriority.HIGH:
@@ -255,7 +223,7 @@ async def example_2_priority_based_processing():
                         timeout_seconds=180,  # Longer timeout
                         max_retries=3,  # More retries
                         use_cache=True,
-                        skip_inactive_wallets=False  # Don't skip any high priority wallets
+                        skip_inactive_wallets=False,  # Don't skip any high priority wallets
                     )
                 elif priority == ProcessingPriority.NORMAL:
                     config = BatchConfig(
@@ -266,7 +234,7 @@ async def example_2_priority_based_processing():
                         max_retries=2,
                         use_cache=True,
                         skip_inactive_wallets=True,
-                        inactive_threshold_days=90
+                        inactive_threshold_days=90,
                     )
                 else:  # LOW priority
                     config = BatchConfig(
@@ -278,15 +246,14 @@ async def example_2_priority_based_processing():
                         use_cache=True,
                         skip_inactive_wallets=True,
                         inactive_threshold_days=365,  # Skip very old wallets
-                        min_value_threshold_usd=Decimal("1.0")  # Skip low value wallets
+                        min_value_threshold_usd=Decimal("1.0"),  # Skip low value wallets
                     )
 
                 # Process this priority group
                 start_time = time.time()
 
                 results = await app.batch_processor.process_wallet_list(
-                    addresses=priority_addresses,
-                    config_override=config
+                    addresses=priority_addresses, config_override=config
                 )
 
                 end_time = time.time()
@@ -296,29 +263,25 @@ async def example_2_priority_based_processing():
                 print(f"  📊 Processed: {results.wallets_processed}")
                 print(f"  💰 Total Value: ${results.total_portfolio_value:,.2f}")
 
-                all_results.append({
-                    'priority': priority.value,
-                    'results': results,
-                    'duration': duration
-                })
+                all_results.append({"priority": priority.value, "results": results, "duration": duration})
 
             total_duration = time.time() - total_start_time
 
             # Summary of priority-based processing
-            print(f"\n📈 Priority Processing Summary:")
+            print("\n📈 Priority Processing Summary:")
             print(f"  Total Duration: {total_duration:.1f}s")
 
-            total_processed = sum(r['results'].wallets_processed for r in all_results)
-            total_value = sum(float(r['results'].total_portfolio_value) for r in all_results)
+            total_processed = sum(r["results"].wallets_processed for r in all_results)
+            total_value = sum(float(r["results"].total_portfolio_value) for r in all_results)
 
             print(f"  Total Wallets Processed: {total_processed}")
             print(f"  Total Portfolio Value: ${total_value:,.2f}")
 
             for result in all_results:
-                priority = result['priority']
-                processed = result['results'].wallets_processed
-                value = float(result['results'].total_portfolio_value)
-                duration = result['duration']
+                priority = result["priority"]
+                processed = result["results"].wallets_processed
+                value = float(result["results"].total_portfolio_value)
+                duration = result["duration"]
 
                 print(f"  {priority}: {processed} wallets, ${value:,.2f}, {duration:.1f}s")
 
@@ -344,8 +307,8 @@ async def example_3_custom_configuration_tuning():
                 max_concurrent_jobs_per_batch=2,
                 request_delay_seconds=0.5,
                 timeout_seconds=180,
-                max_retries=3
-            )
+                max_retries=3,
+            ),
         },
         {
             "name": "Balanced",
@@ -354,8 +317,8 @@ async def example_3_custom_configuration_tuning():
                 max_concurrent_jobs_per_batch=3,
                 request_delay_seconds=0.2,
                 timeout_seconds=120,
-                max_retries=2
-            )
+                max_retries=2,
+            ),
         },
         {
             "name": "Aggressive",
@@ -364,9 +327,9 @@ async def example_3_custom_configuration_tuning():
                 max_concurrent_jobs_per_batch=5,
                 request_delay_seconds=0.1,
                 timeout_seconds=60,
-                max_retries=1
-            )
-        }
+                max_retries=1,
+            ),
+        },
     ]
 
     # Test addresses for configuration testing
@@ -383,7 +346,7 @@ async def example_3_custom_configuration_tuning():
             for config_test in test_configurations:
                 print(f"\n🧪 Testing {config_test['name']} Configuration:")
 
-                config = config_test['config']
+                config = config_test["config"]
                 print(f"  Batch Size: {config.batch_size}")
                 print(f"  Max Concurrent: {config.max_concurrent_jobs_per_batch}")
                 print(f"  Request Delay: {config.request_delay_seconds}s")
@@ -394,8 +357,7 @@ async def example_3_custom_configuration_tuning():
 
                 try:
                     results = await app.batch_processor.process_wallet_list(
-                        addresses=test_addresses,
-                        config_override=config
+                        addresses=test_addresses, config_override=config
                     )
 
                     end_time = time.time()
@@ -406,15 +368,15 @@ async def example_3_custom_configuration_tuning():
                     success_rate = (results.wallets_processed / len(test_addresses)) * 100
 
                     config_result = {
-                        'name': config_test['name'],
-                        'duration': duration,
-                        'throughput': throughput,
-                        'success_rate': success_rate,
-                        'wallets_processed': results.wallets_processed,
-                        'total_value': float(results.total_portfolio_value),
-                        'api_calls': results.api_calls_total,
-                        'cache_hit_rate': results.cache_hit_rate,
-                        'status': 'success'
+                        "name": config_test["name"],
+                        "duration": duration,
+                        "throughput": throughput,
+                        "success_rate": success_rate,
+                        "wallets_processed": results.wallets_processed,
+                        "total_value": float(results.total_portfolio_value),
+                        "api_calls": results.api_calls_total,
+                        "cache_hit_rate": results.cache_hit_rate,
+                        "status": "success",
                     }
 
                     print(f"  ✅ Duration: {duration:.1f}s")
@@ -424,11 +386,7 @@ async def example_3_custom_configuration_tuning():
 
                 except Exception as e:
                     print(f"  ❌ Configuration failed: {e}")
-                    config_result = {
-                        'name': config_test['name'],
-                        'status': 'failed',
-                        'error': str(e)
-                    }
+                    config_result = {"name": config_test["name"], "status": "failed", "error": str(e)}
 
                 configuration_results.append(config_result)
 
@@ -436,29 +394,31 @@ async def example_3_custom_configuration_tuning():
                 await asyncio.sleep(2)
 
             # Analysis of configuration results
-            print(f"\n📊 Configuration Comparison:")
+            print("\n📊 Configuration Comparison:")
             print(f"{'Config':<12} {'Duration':<10} {'Throughput':<12} {'Success%':<10} {'Cache%':<8}")
             print(f"{'-' * 12} {'-' * 10} {'-' * 12} {'-' * 10} {'-' * 8}")
 
-            successful_configs = [r for r in configuration_results if r.get('status') == 'success']
+            successful_configs = [r for r in configuration_results if r.get("status") == "success"]
 
             for result in successful_configs:
-                print(f"{result['name']:<12} "
-                      f"{result['duration']:<10.1f} "
-                      f"{result['throughput']:<12.1f} "
-                      f"{result['success_rate']:<10.1f} "
-                      f"{result['cache_hit_rate']:<8.1f}")
+                print(
+                    f"{result['name']:<12} "
+                    f"{result['duration']:<10.1f} "
+                    f"{result['throughput']:<12.1f} "
+                    f"{result['success_rate']:<10.1f} "
+                    f"{result['cache_hit_rate']:<8.1f}"
+                )
 
             # Recommend best configuration
             if successful_configs:
                 # Score based on throughput and success rate
                 for result in successful_configs:
-                    result['score'] = (result['throughput'] * result['success_rate']) / 100
+                    result["score"] = (result["throughput"] * result["success_rate"]) / 100
 
-                best_config = max(successful_configs, key=lambda x: x['score'])
+                best_config = max(successful_configs, key=lambda x: x["score"])
                 print(f"\n🏆 Recommended Configuration: {best_config['name']}")
                 print(f"  Score: {best_config['score']:.1f}")
-                print(f"  Best balance of speed and reliability")
+                print("  Best balance of speed and reliability")
 
             return configuration_results
 
@@ -498,7 +458,7 @@ async def example_4_error_recovery_patterns():
                 error_threshold_percent=50,  # Stop if more than 50% fail
             )
 
-            print(f"🛡️ Processing with resilient configuration...")
+            print("🛡️ Processing with resilient configuration...")
             print(f"  Error Threshold: {resilient_config.error_threshold_percent}%")
             print(f"  Continue on Error: {resilient_config.continue_on_error}")
             print(f"  Max Retries: {resilient_config.max_retries}")
@@ -506,33 +466,35 @@ async def example_4_error_recovery_patterns():
             # Track errors during processing
             error_details = []
 
-            def error_callback(error_info: Dict[str, Any]):
+            def error_callback(error_info: dict[str, Any]):
                 """Track error details."""
-                error_details.append({
-                    'timestamp': datetime.now(),
-                    'address': error_info.get('address'),
-                    'error_type': error_info.get('error_type'),
-                    'error_message': error_info.get('error_message'),
-                    'retry_count': error_info.get('retry_count', 0)
-                })
+                error_details.append(
+                    {
+                        "timestamp": datetime.now(),
+                        "address": error_info.get("address"),
+                        "error_type": error_info.get("error_type"),
+                        "error_message": error_info.get("error_message"),
+                        "retry_count": error_info.get("retry_count", 0),
+                    }
+                )
 
-                print(f"⚠️  Error: {error_info.get('address', 'Unknown')[:10]}... "
-                      f"({error_info.get('error_type', 'Unknown')})")
+                print(
+                    f"⚠️  Error: {error_info.get('address', 'Unknown')[:10]}... "
+                    f"({error_info.get('error_type', 'Unknown')})"
+                )
 
             # Process with error tracking
             start_time = time.time()
 
             results = await app.batch_processor.process_wallet_list(
-                addresses=test_addresses,
-                config_override=resilient_config,
-                error_callback=error_callback
+                addresses=test_addresses, config_override=resilient_config, error_callback=error_callback
             )
 
             end_time = time.time()
             duration = end_time - start_time
 
             # Analyze error patterns
-            print(f"\n📊 Error Recovery Results:")
+            print("\n📊 Error Recovery Results:")
             print(f"  Total Duration: {duration:.1f}s")
             print(f"  Wallets Processed: {results.wallets_processed}")
             print(f"  Wallets Failed: {len(error_details)}")
@@ -540,46 +502,42 @@ async def example_4_error_recovery_patterns():
 
             # Error analysis
             if error_details:
-                print(f"\n🔍 Error Analysis:")
+                print("\n🔍 Error Analysis:")
 
                 error_types = {}
                 for error in error_details:
-                    error_type = error.get('error_type', 'Unknown')
+                    error_type = error.get("error_type", "Unknown")
                     error_types[error_type] = error_types.get(error_type, 0) + 1
 
                 for error_type, count in error_types.items():
                     print(f"  {error_type}: {count} occurrences")
 
                 # Show retry patterns
-                retried_errors = [e for e in error_details if e.get('retry_count', 0) > 0]
+                retried_errors = [e for e in error_details if e.get("retry_count", 0) > 0]
                 if retried_errors:
                     print(f"  Retried Errors: {len(retried_errors)}")
-                    avg_retries = sum(e.get('retry_count', 0) for e in retried_errors) / len(retried_errors)
+                    avg_retries = sum(e.get("retry_count", 0) for e in retried_errors) / len(retried_errors)
                     print(f"  Average Retries: {avg_retries:.1f}")
 
             # Recovery recommendations
-            print(f"\n💡 Recovery Recommendations:")
+            print("\n💡 Recovery Recommendations:")
             if len(error_details) == 0:
-                print(f"  ✅ No errors encountered - configuration is working well")
+                print("  ✅ No errors encountered - configuration is working well")
             elif len(error_details) < len(test_addresses) * 0.1:  # Less than 10% errors
-                print(f"  ✅ Low error rate - current configuration is acceptable")
+                print("  ✅ Low error rate - current configuration is acceptable")
             elif len(error_details) < len(test_addresses) * 0.3:  # Less than 30% errors
-                print(f"  ⚠️  Moderate error rate - consider:")
-                print(f"     - Increasing timeout values")
-                print(f"     - Reducing batch size")
-                print(f"     - Adding more retry attempts")
+                print("  ⚠️  Moderate error rate - consider:")
+                print("     - Increasing timeout values")
+                print("     - Reducing batch size")
+                print("     - Adding more retry attempts")
             else:
-                print(f"  ❌ High error rate - consider:")
-                print(f"     - Checking API key configuration")
-                print(f"     - Reducing concurrency")
-                print(f"     - Implementing exponential backoff")
-                print(f"     - Validating input data quality")
+                print("  ❌ High error rate - consider:")
+                print("     - Checking API key configuration")
+                print("     - Reducing concurrency")
+                print("     - Implementing exponential backoff")
+                print("     - Validating input data quality")
 
-            return {
-                'results': results,
-                'error_details': error_details,
-                'duration': duration
-            }
+            return {"results": results, "error_details": error_details, "duration": duration}
 
         except Exception as e:
             print(f"❌ Error recovery testing failed: {e}")
@@ -594,11 +552,11 @@ async def example_5_performance_monitoring():
 
     # Create monitoring data structure
     performance_metrics = {
-        'start_time': time.time(),
-        'processing_phases': [],
-        'resource_usage': [],
-        'api_call_patterns': [],
-        'error_rates': []
+        "start_time": time.time(),
+        "processing_phases": [],
+        "resource_usage": [],
+        "api_call_patterns": [],
+        "error_rates": [],
     }
 
     test_addresses = [
@@ -609,7 +567,7 @@ async def example_5_performance_monitoring():
 
     async with create_application() as app:
         try:
-            print(f"📊 Starting performance monitoring...")
+            print("📊 Starting performance monitoring...")
 
             # Custom monitoring configuration
             monitoring_config = BatchConfig(
@@ -618,47 +576,53 @@ async def example_5_performance_monitoring():
                 request_delay_seconds=0.2,
                 timeout_seconds=120,
                 use_cache=True,
-                enable_detailed_metrics=True
+                enable_detailed_metrics=True,
             )
 
             # Monitoring callbacks
-            def phase_callback(phase: str, metrics: Dict[str, Any]):
+            def phase_callback(phase: str, metrics: dict[str, Any]):
                 """Track processing phases."""
-                performance_metrics['processing_phases'].append({
-                    'timestamp': time.time(),
-                    'phase': phase,
-                    'metrics': metrics.copy()
-                })
+                performance_metrics["processing_phases"].append(
+                    {"timestamp": time.time(), "phase": phase, "metrics": metrics.copy()}
+                )
 
                 print(f"📈 Phase: {phase} - {metrics.get('description', '')}")
 
-            def resource_callback(resource_info: Dict[str, Any]):
+            def resource_callback(resource_info: dict[str, Any]):
                 """Track resource usage."""
-                performance_metrics['resource_usage'].append({
-                    'timestamp': time.time(),
-                    'memory_mb': resource_info.get('memory_mb', 0),
-                    'cpu_percent': resource_info.get('cpu_percent', 0),
-                    'active_connections': resource_info.get('active_connections', 0)
-                })
+                performance_metrics["resource_usage"].append(
+                    {
+                        "timestamp": time.time(),
+                        "memory_mb": resource_info.get("memory_mb", 0),
+                        "cpu_percent": resource_info.get("cpu_percent", 0),
+                        "active_connections": resource_info.get("active_connections", 0),
+                    }
+                )
 
-                if len(performance_metrics['resource_usage']) % 5 == 0:
-                    print(f"💾 Resources: {resource_info.get('memory_mb', 0):.0f}MB RAM, "
-                          f"{resource_info.get('cpu_percent', 0):.1f}% CPU")
+                if len(performance_metrics["resource_usage"]) % 5 == 0:
+                    print(
+                        f"💾 Resources: {resource_info.get('memory_mb', 0):.0f}MB RAM, "
+                        f"{resource_info.get('cpu_percent', 0):.1f}% CPU"
+                    )
 
-            def api_callback(api_info: Dict[str, Any]):
+            def api_callback(api_info: dict[str, Any]):
                 """Track API call patterns."""
-                performance_metrics['api_call_patterns'].append({
-                    'timestamp': time.time(),
-                    'service': api_info.get('service'),
-                    'endpoint': api_info.get('endpoint'),
-                    'response_time_ms': api_info.get('response_time_ms'),
-                    'status_code': api_info.get('status_code'),
-                    'cache_hit': api_info.get('cache_hit', False)
-                })
+                performance_metrics["api_call_patterns"].append(
+                    {
+                        "timestamp": time.time(),
+                        "service": api_info.get("service"),
+                        "endpoint": api_info.get("endpoint"),
+                        "response_time_ms": api_info.get("response_time_ms"),
+                        "status_code": api_info.get("status_code"),
+                        "cache_hit": api_info.get("cache_hit", False),
+                    }
+                )
 
-                print(f"🔗 API: {api_info.get('service')} - "
-                      f"{api_info.get('response_time_ms', 0):.0f}ms "
-                      f"{'(cached)' if api_info.get('cache_hit') else ''}")
+                print(
+                    f"🔗 API: {api_info.get('service')} - "
+                    f"{api_info.get('response_time_ms', 0):.0f}ms "
+                    f"{'(cached)' if api_info.get('cache_hit') else ''}"
+                )
 
             # Process with detailed monitoring
             results = await app.batch_processor.process_wallet_list(
@@ -666,63 +630,58 @@ async def example_5_performance_monitoring():
                 config_override=monitoring_config,
                 phase_callback=phase_callback,
                 resource_callback=resource_callback,
-                api_callback=api_callback
+                api_callback=api_callback,
             )
 
-            performance_metrics['end_time'] = time.time()
-            total_duration = performance_metrics['end_time'] - performance_metrics['start_time']
+            performance_metrics["end_time"] = time.time()
+            total_duration = performance_metrics["end_time"] - performance_metrics["start_time"]
 
             # Analyze performance data
-            print(f"\n📊 Performance Analysis:")
+            print("\n📊 Performance Analysis:")
             print(f"  Total Duration: {total_duration:.1f}s")
             print(f"  Wallets Processed: {results.wallets_processed}")
             print(f"  Overall Throughput: {results.wallets_processed / total_duration:.1f} wallets/second")
 
             # Phase analysis
-            if performance_metrics['processing_phases']:
-                print(f"\n⏱️  Processing Phases:")
+            if performance_metrics["processing_phases"]:
+                print("\n⏱️  Processing Phases:")
                 phase_times = {}
 
-                for i, phase in enumerate(performance_metrics['processing_phases']):
+                for i, phase in enumerate(performance_metrics["processing_phases"]):
                     if i > 0:
-                        prev_time = performance_metrics['processing_phases'][i - 1]['timestamp']
-                        phase_duration = phase['timestamp'] - prev_time
-                        phase_times[phase['phase']] = phase_times.get(phase['phase'], 0) + phase_duration
+                        prev_time = performance_metrics["processing_phases"][i - 1]["timestamp"]
+                        phase_duration = phase["timestamp"] - prev_time
+                        phase_times[phase["phase"]] = phase_times.get(phase["phase"], 0) + phase_duration
 
                 for phase, duration in phase_times.items():
                     percentage = (duration / total_duration) * 100
                     print(f"  {phase}: {duration:.1f}s ({percentage:.1f}%)")
 
             # API call analysis
-            if performance_metrics['api_call_patterns']:
-                api_calls = performance_metrics['api_call_patterns']
+            if performance_metrics["api_call_patterns"]:
+                api_calls = performance_metrics["api_call_patterns"]
 
-                print(f"\n🔗 API Performance:")
+                print("\n🔗 API Performance:")
                 print(f"  Total API Calls: {len(api_calls)}")
 
                 # Group by service
                 service_stats = {}
                 for call in api_calls:
-                    service = call.get('service', 'Unknown')
+                    service = call.get("service", "Unknown")
                     if service not in service_stats:
-                        service_stats[service] = {
-                            'count': 0,
-                            'total_time': 0,
-                            'cache_hits': 0,
-                            'errors': 0
-                        }
+                        service_stats[service] = {"count": 0, "total_time": 0, "cache_hits": 0, "errors": 0}
 
-                    service_stats[service]['count'] += 1
-                    service_stats[service]['total_time'] += call.get('response_time_ms', 0)
-                    if call.get('cache_hit'):
-                        service_stats[service]['cache_hits'] += 1
-                    if call.get('status_code', 200) >= 400:
-                        service_stats[service]['errors'] += 1
+                    service_stats[service]["count"] += 1
+                    service_stats[service]["total_time"] += call.get("response_time_ms", 0)
+                    if call.get("cache_hit"):
+                        service_stats[service]["cache_hits"] += 1
+                    if call.get("status_code", 200) >= 400:
+                        service_stats[service]["errors"] += 1
 
                 for service, stats in service_stats.items():
-                    avg_time = stats['total_time'] / stats['count'] if stats['count'] > 0 else 0
-                    cache_rate = (stats['cache_hits'] / stats['count']) * 100 if stats['count'] > 0 else 0
-                    error_rate = (stats['errors'] / stats['count']) * 100 if stats['count'] > 0 else 0
+                    avg_time = stats["total_time"] / stats["count"] if stats["count"] > 0 else 0
+                    cache_rate = (stats["cache_hits"] / stats["count"]) * 100 if stats["count"] > 0 else 0
+                    error_rate = (stats["errors"] / stats["count"]) * 100 if stats["count"] > 0 else 0
 
                     print(f"  {service}:")
                     print(f"    Calls: {stats['count']}")
@@ -731,52 +690,48 @@ async def example_5_performance_monitoring():
                     print(f"    Error Rate: {error_rate:.1f}%")
 
             # Performance recommendations
-            print(f"\n💡 Performance Recommendations:")
+            print("\n💡 Performance Recommendations:")
 
             # Based on cache hit rate
             if results.cache_hit_rate < 50:
                 print(f"  📦 Low cache hit rate ({results.cache_hit_rate:.1f}%) - consider:")
-                print(f"     - Increasing cache TTL")
-                print(f"     - Pre-warming cache for common addresses")
-                print(f"     - Using Redis for distributed caching")
+                print("     - Increasing cache TTL")
+                print("     - Pre-warming cache for common addresses")
+                print("     - Using Redis for distributed caching")
 
             # Based on API response times
-            if performance_metrics['api_call_patterns']:
-                avg_api_time = sum(c.get('response_time_ms', 0) for c in performance_metrics['api_call_patterns'])
-                avg_api_time /= len(performance_metrics['api_call_patterns'])
+            if performance_metrics["api_call_patterns"]:
+                avg_api_time = sum(c.get("response_time_ms", 0) for c in performance_metrics["api_call_patterns"])
+                avg_api_time /= len(performance_metrics["api_call_patterns"])
 
                 if avg_api_time > 1000:  # More than 1 second
                     print(f"  🐌 Slow API responses ({avg_api_time:.0f}ms avg) - consider:")
-                    print(f"     - Reducing request delay")
-                    print(f"     - Using faster API endpoints")
-                    print(f"     - Implementing request batching")
+                    print("     - Reducing request delay")
+                    print("     - Using faster API endpoints")
+                    print("     - Implementing request batching")
                 elif avg_api_time < 200:  # Less than 200ms
                     print(f"  🚀 Fast API responses ({avg_api_time:.0f}ms avg) - can optimize:")
-                    print(f"     - Increase concurrency")
-                    print(f"     - Reduce request delays")
-                    print(f"     - Process larger batches")
+                    print("     - Increase concurrency")
+                    print("     - Reduce request delays")
+                    print("     - Process larger batches")
 
             # Save performance data
             perf_file = Path("performance_analysis.json")
-            with open(perf_file, 'w') as f:
+            with open(perf_file, "w") as f:
                 # Convert timestamps to ISO format for JSON serialization
                 perf_data = performance_metrics.copy()
-                for phase in perf_data['processing_phases']:
-                    phase['timestamp'] = datetime.fromtimestamp(phase['timestamp']).isoformat()
-                for resource in perf_data['resource_usage']:
-                    resource['timestamp'] = datetime.fromtimestamp(resource['timestamp']).isoformat()
-                for api_call in perf_data['api_call_patterns']:
-                    api_call['timestamp'] = datetime.fromtimestamp(api_call['timestamp']).isoformat()
+                for phase in perf_data["processing_phases"]:
+                    phase["timestamp"] = datetime.fromtimestamp(phase["timestamp"]).isoformat()
+                for resource in perf_data["resource_usage"]:
+                    resource["timestamp"] = datetime.fromtimestamp(resource["timestamp"]).isoformat()
+                for api_call in perf_data["api_call_patterns"]:
+                    api_call["timestamp"] = datetime.fromtimestamp(api_call["timestamp"]).isoformat()
 
                 json.dump(perf_data, f, indent=2)
 
             print(f"💾 Performance data saved to: {perf_file}")
 
-            return {
-                'results': results,
-                'performance_metrics': performance_metrics,
-                'duration': total_duration
-            }
+            return {"results": results, "performance_metrics": performance_metrics, "duration": total_duration}
 
         except Exception as e:
             print(f"❌ Performance monitoring failed: {e}")
@@ -801,8 +756,8 @@ async def example_6_resource_optimization():
                         request_delay_seconds=0.3,
                         use_cache=False,  # Disable cache to save memory
                         enable_garbage_collection=True,
-                        max_memory_mb=100
-                    )
+                        max_memory_mb=100,
+                    ),
                 },
                 {
                     "name": "Speed Optimized",
@@ -812,8 +767,8 @@ async def example_6_resource_optimization():
                         request_delay_seconds=0.05,
                         use_cache=True,  # Use cache for speed
                         enable_garbage_collection=False,
-                        max_memory_mb=500
-                    )
+                        max_memory_mb=500,
+                    ),
                 },
                 {
                     "name": "Balanced",
@@ -823,9 +778,9 @@ async def example_6_resource_optimization():
                         request_delay_seconds=0.15,
                         use_cache=True,
                         enable_garbage_collection=True,
-                        max_memory_mb=250
-                    )
-                }
+                        max_memory_mb=250,
+                    ),
+                },
             ]
 
             # Test addresses for resource testing
@@ -837,18 +792,14 @@ async def example_6_resource_optimization():
             ]
 
             for i, addr in enumerate(real_addresses):
-                test_addresses.append({
-                    "address": addr,
-                    "label": f"Resource Test {i + 1}",
-                    "row_number": i + 1
-                })
+                test_addresses.append({"address": addr, "label": f"Resource Test {i + 1}", "row_number": i + 1})
 
             resource_results = []
 
             for config_test in resource_configs:
                 print(f"\n🧪 Testing {config_test['name']} Configuration:")
 
-                config = config_test['config']
+                config = config_test["config"]
 
                 # Monitor resource usage during processing
                 resource_usage = []
@@ -856,13 +807,16 @@ async def example_6_resource_optimization():
                 def resource_monitor():
                     """Simple resource monitoring."""
                     import psutil
+
                     process = psutil.Process()
 
-                    resource_usage.append({
-                        'timestamp': time.time(),
-                        'memory_mb': process.memory_info().rss / 1024 / 1024,
-                        'cpu_percent': process.cpu_percent()
-                    })
+                    resource_usage.append(
+                        {
+                            "timestamp": time.time(),
+                            "memory_mb": process.memory_info().rss / 1024 / 1024,
+                            "cpu_percent": process.cpu_percent(),
+                        }
+                    )
 
                 # Start resource monitoring
                 monitoring_task = None
@@ -879,8 +833,7 @@ async def example_6_resource_optimization():
                     start_time = time.time()
 
                     results = await app.batch_processor.process_wallet_list(
-                        addresses=test_addresses,
-                        config_override=config
+                        addresses=test_addresses, config_override=config
                     )
 
                     end_time = time.time()
@@ -891,23 +844,23 @@ async def example_6_resource_optimization():
 
                     # Analyze resource usage
                     if resource_usage:
-                        peak_memory = max(r['memory_mb'] for r in resource_usage)
-                        avg_memory = sum(r['memory_mb'] for r in resource_usage) / len(resource_usage)
-                        avg_cpu = sum(r['cpu_percent'] for r in resource_usage) / len(resource_usage)
+                        peak_memory = max(r["memory_mb"] for r in resource_usage)
+                        avg_memory = sum(r["memory_mb"] for r in resource_usage) / len(resource_usage)
+                        avg_cpu = sum(r["cpu_percent"] for r in resource_usage) / len(resource_usage)
                     else:
                         peak_memory = avg_memory = avg_cpu = 0
 
                     resource_result = {
-                        'name': config_test['name'],
-                        'duration': duration,
-                        'peak_memory_mb': peak_memory,
-                        'avg_memory_mb': avg_memory,
-                        'avg_cpu_percent': avg_cpu,
-                        'wallets_processed': results.wallets_processed,
-                        'cache_hit_rate': results.cache_hit_rate,
-                        'api_calls': results.api_calls_total,
-                        'memory_efficiency': results.wallets_processed / peak_memory if peak_memory > 0 else 0,
-                        'speed_efficiency': results.wallets_processed / duration if duration > 0 else 0
+                        "name": config_test["name"],
+                        "duration": duration,
+                        "peak_memory_mb": peak_memory,
+                        "avg_memory_mb": avg_memory,
+                        "avg_cpu_percent": avg_cpu,
+                        "wallets_processed": results.wallets_processed,
+                        "cache_hit_rate": results.cache_hit_rate,
+                        "api_calls": results.api_calls_total,
+                        "memory_efficiency": results.wallets_processed / peak_memory if peak_memory > 0 else 0,
+                        "speed_efficiency": results.wallets_processed / duration if duration > 0 else 0,
                     }
 
                     print(f"  ⏱️  Duration: {duration:.1f}s")
@@ -921,11 +874,7 @@ async def example_6_resource_optimization():
                     if monitoring_task:
                         monitoring_task.cancel()
 
-                    resource_result = {
-                        'name': config_test['name'],
-                        'status': 'failed',
-                        'error': str(e)
-                    }
+                    resource_result = {"name": config_test["name"], "status": "failed", "error": str(e)}
                     print(f"  ❌ Test failed: {e}")
 
                 resource_results.append(resource_result)
@@ -934,26 +883,28 @@ async def example_6_resource_optimization():
                 await asyncio.sleep(2)
 
             # Compare resource efficiency
-            print(f"\n📊 Resource Efficiency Comparison:")
+            print("\n📊 Resource Efficiency Comparison:")
             print(f"{'Config':<15} {'Duration':<10} {'Peak RAM':<10} {'Efficiency':<12} {'Speed':<10}")
             print(f"{'-' * 15} {'-' * 10} {'-' * 10} {'-' * 12} {'-' * 10}")
 
-            successful_tests = [r for r in resource_results if 'duration' in r]
+            successful_tests = [r for r in resource_results if "duration" in r]
 
             for result in successful_tests:
-                print(f"{result['name']:<15} "
-                      f"{result['duration']:<10.1f} "
-                      f"{result['peak_memory_mb']:<10.1f} "
-                      f"{result['memory_efficiency']:<12.2f} "
-                      f"{result['speed_efficiency']:<10.2f}")
+                print(
+                    f"{result['name']:<15} "
+                    f"{result['duration']:<10.1f} "
+                    f"{result['peak_memory_mb']:<10.1f} "
+                    f"{result['memory_efficiency']:<12.2f} "
+                    f"{result['speed_efficiency']:<10.2f}"
+                )
 
             # Resource optimization recommendations
-            print(f"\n💡 Resource Optimization Recommendations:")
+            print("\n💡 Resource Optimization Recommendations:")
 
             if successful_tests:
                 # Find most memory efficient
-                most_memory_efficient = max(successful_tests, key=lambda x: x.get('memory_efficiency', 0))
-                fastest = max(successful_tests, key=lambda x: x.get('speed_efficiency', 0))
+                most_memory_efficient = max(successful_tests, key=lambda x: x.get("memory_efficiency", 0))
+                fastest = max(successful_tests, key=lambda x: x.get("speed_efficiency", 0))
 
                 print(f"  🧠 Most Memory Efficient: {most_memory_efficient['name']}")
                 print(f"     {most_memory_efficient['memory_efficiency']:.2f} wallets/MB")
@@ -962,17 +913,17 @@ async def example_6_resource_optimization():
                 print(f"     {fastest['speed_efficiency']:.2f} wallets/second")
 
                 # General recommendations
-                avg_memory = sum(r.get('peak_memory_mb', 0) for r in successful_tests) / len(successful_tests)
+                avg_memory = sum(r.get("peak_memory_mb", 0) for r in successful_tests) / len(successful_tests)
                 if avg_memory > 200:
-                    print(f"  📦 High memory usage detected - consider:")
-                    print(f"     - Reducing batch sizes")
-                    print(f"     - Enabling garbage collection")
-                    print(f"     - Disabling cache for large datasets")
+                    print("  📦 High memory usage detected - consider:")
+                    print("     - Reducing batch sizes")
+                    print("     - Enabling garbage collection")
+                    print("     - Disabling cache for large datasets")
                 elif avg_memory < 50:
-                    print(f"  💚 Low memory usage - can optimize for speed:")
-                    print(f"     - Increase batch sizes")
-                    print(f"     - Enable caching")
-                    print(f"     - Increase concurrency")
+                    print("  💚 Low memory usage - can optimize for speed:")
+                    print("     - Increase batch sizes")
+                    print("     - Enable caching")
+                    print("     - Increase concurrency")
 
             return resource_results
 
@@ -997,41 +948,53 @@ async def example_7_advanced_queue_management():
                         {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "label": "Vitalik", "row_number": 1}
                     ],
                     "priority": QueuePriority.HIGH,
-                    "estimated_complexity": "high"
+                    "estimated_complexity": "high",
                 },
                 {
                     "name": "Regular Wallets",
                     "addresses": [
-                        {"address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B", "label": "Regular 1",
-                         "row_number": 2},
-                        {"address": "0x8ba1f109551bD432803012645Hac136c73F825e01", "label": "Regular 2",
-                         "row_number": 3}
+                        {
+                            "address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B",
+                            "label": "Regular 1",
+                            "row_number": 2,
+                        },
+                        {
+                            "address": "0x8ba1f109551bD432803012645Hac136c73F825e01",
+                            "label": "Regular 2",
+                            "row_number": 3,
+                        },
                     ],
                     "priority": QueuePriority.NORMAL,
-                    "estimated_complexity": "medium"
+                    "estimated_complexity": "medium",
                 },
                 {
                     "name": "Background Processing",
                     "addresses": [
-                        {"address": "0x123456789abcdef123456789abcdef1234567890", "label": "Background 1",
-                         "row_number": 4},
-                        {"address": "0xabcdef123456789abcdef123456789abcdef12345", "label": "Background 2",
-                         "row_number": 5}
+                        {
+                            "address": "0x123456789abcdef123456789abcdef1234567890",
+                            "label": "Background 1",
+                            "row_number": 4,
+                        },
+                        {
+                            "address": "0xabcdef123456789abcdef123456789abcdef12345",
+                            "label": "Background 2",
+                            "row_number": 5,
+                        },
                     ],
                     "priority": QueuePriority.LOW,
-                    "estimated_complexity": "low"
-                }
+                    "estimated_complexity": "low",
+                },
             ]
 
-            print(f"📋 Setting up advanced queue management...")
+            print("📋 Setting up advanced queue management...")
 
             # Queue statistics
             queue_stats = {
-                'jobs_submitted': 0,
-                'jobs_completed': 0,
-                'jobs_failed': 0,
-                'processing_times': [],
-                'queue_wait_times': []
+                "jobs_submitted": 0,
+                "jobs_completed": 0,
+                "jobs_failed": 0,
+                "processing_times": [],
+                "queue_wait_times": [],
             }
 
             # Submit jobs to different priority queues
@@ -1041,23 +1004,23 @@ async def example_7_advanced_queue_management():
                 print(f"\n🎯 Processing {job_set['name']} (Priority: {job_set['priority'].value})")
 
                 # Configure processing based on priority and complexity
-                if job_set['priority'] == QueuePriority.HIGH:
+                if job_set["priority"] == QueuePriority.HIGH:
                     config = BatchConfig(
                         batch_size=1,  # Process individually for high priority
                         max_concurrent_jobs_per_batch=1,
                         request_delay_seconds=0.05,
                         timeout_seconds=300,  # Longer timeout
                         max_retries=3,
-                        use_cache=True
+                        use_cache=True,
                     )
-                elif job_set['priority'] == QueuePriority.NORMAL:
+                elif job_set["priority"] == QueuePriority.NORMAL:
                     config = BatchConfig(
                         batch_size=5,
                         max_concurrent_jobs_per_batch=3,
                         request_delay_seconds=0.15,
                         timeout_seconds=120,
                         max_retries=2,
-                        use_cache=True
+                        use_cache=True,
                     )
                 else:  # LOW priority
                     config = BatchConfig(
@@ -1068,7 +1031,7 @@ async def example_7_advanced_queue_management():
                         max_retries=1,
                         use_cache=True,
                         skip_inactive_wallets=True,
-                        min_value_threshold_usd=Decimal("5.0")
+                        min_value_threshold_usd=Decimal("5.0"),
                     )
 
                 # Track queue timing
@@ -1079,8 +1042,7 @@ async def example_7_advanced_queue_management():
                     processing_start_time = time.time()
 
                     results = await app.batch_processor.process_wallet_list(
-                        addresses=job_set['addresses'],
-                        config_override=config
+                        addresses=job_set["addresses"], config_override=config
                     )
 
                     processing_end_time = time.time()
@@ -1089,21 +1051,21 @@ async def example_7_advanced_queue_management():
                     queue_wait_time = processing_start_time - queue_start_time
                     processing_time = processing_end_time - processing_start_time
 
-                    queue_stats['jobs_submitted'] += len(job_set['addresses'])
-                    queue_stats['jobs_completed'] += results.wallets_processed
-                    queue_stats['processing_times'].append(processing_time)
-                    queue_stats['queue_wait_times'].append(queue_wait_time)
+                    queue_stats["jobs_submitted"] += len(job_set["addresses"])
+                    queue_stats["jobs_completed"] += results.wallets_processed
+                    queue_stats["processing_times"].append(processing_time)
+                    queue_stats["queue_wait_times"].append(queue_wait_time)
 
                     job_result = {
-                        'name': job_set['name'],
-                        'priority': job_set['priority'].value,
-                        'addresses_submitted': len(job_set['addresses']),
-                        'wallets_processed': results.wallets_processed,
-                        'queue_wait_time': queue_wait_time,
-                        'processing_time': processing_time,
-                        'total_value': float(results.total_portfolio_value),
-                        'cache_hit_rate': results.cache_hit_rate,
-                        'status': 'completed'
+                        "name": job_set["name"],
+                        "priority": job_set["priority"].value,
+                        "addresses_submitted": len(job_set["addresses"]),
+                        "wallets_processed": results.wallets_processed,
+                        "queue_wait_time": queue_wait_time,
+                        "processing_time": processing_time,
+                        "total_value": float(results.total_portfolio_value),
+                        "cache_hit_rate": results.cache_hit_rate,
+                        "status": "completed",
                     }
 
                     print(f"  ✅ Completed: {results.wallets_processed} wallets")
@@ -1112,13 +1074,13 @@ async def example_7_advanced_queue_management():
                     print(f"  💰 Total Value: ${results.total_portfolio_value:,.2f}")
 
                 except Exception as e:
-                    queue_stats['jobs_failed'] += len(job_set['addresses'])
+                    queue_stats["jobs_failed"] += len(job_set["addresses"])
 
                     job_result = {
-                        'name': job_set['name'],
-                        'priority': job_set['priority'].value,
-                        'status': 'failed',
-                        'error': str(e)
+                        "name": job_set["name"],
+                        "priority": job_set["priority"].value,
+                        "status": "failed",
+                        "error": str(e),
                     }
 
                     print(f"  ❌ Failed: {e}")
@@ -1129,45 +1091,46 @@ async def example_7_advanced_queue_management():
                 await asyncio.sleep(1)
 
             # Queue performance analysis
-            print(f"\n📊 Queue Performance Analysis:")
+            print("\n📊 Queue Performance Analysis:")
             print(f"  Jobs Submitted: {queue_stats['jobs_submitted']}")
             print(f"  Jobs Completed: {queue_stats['jobs_completed']}")
             print(f"  Jobs Failed: {queue_stats['jobs_failed']}")
             print(f"  Success Rate: {(queue_stats['jobs_completed'] / queue_stats['jobs_submitted']) * 100:.1f}%")
 
-            if queue_stats['processing_times']:
-                avg_processing_time = sum(queue_stats['processing_times']) / len(queue_stats['processing_times'])
-                avg_queue_wait = sum(queue_stats['queue_wait_times']) / len(queue_stats['queue_wait_times'])
+            if queue_stats["processing_times"]:
+                avg_processing_time = sum(queue_stats["processing_times"]) / len(queue_stats["processing_times"])
+                avg_queue_wait = sum(queue_stats["queue_wait_times"]) / len(queue_stats["queue_wait_times"])
 
                 print(f"  Avg Processing Time: {avg_processing_time:.2f}s")
                 print(f"  Avg Queue Wait Time: {avg_queue_wait:.2f}s")
                 print(
-                    f"  Queue Efficiency: {(avg_processing_time / (avg_processing_time + avg_queue_wait)) * 100:.1f}%")
+                    f"  Queue Efficiency: {(avg_processing_time / (avg_processing_time + avg_queue_wait)) * 100:.1f}%"
+                )
 
             # Priority-based analysis
-            print(f"\n🎯 Priority-Based Performance:")
+            print("\n🎯 Priority-Based Performance:")
             priority_stats = {}
 
             for result in all_job_results:
-                if result.get('status') == 'completed':
-                    priority = result['priority']
+                if result.get("status") == "completed":
+                    priority = result["priority"]
                     if priority not in priority_stats:
                         priority_stats[priority] = {
-                            'count': 0,
-                            'total_processing_time': 0,
-                            'total_queue_wait': 0,
-                            'total_value': 0
+                            "count": 0,
+                            "total_processing_time": 0,
+                            "total_queue_wait": 0,
+                            "total_value": 0,
                         }
 
-                    priority_stats[priority]['count'] += 1
-                    priority_stats[priority]['total_processing_time'] += result.get('processing_time', 0)
-                    priority_stats[priority]['total_queue_wait'] += result.get('queue_wait_time', 0)
-                    priority_stats[priority]['total_value'] += result.get('total_value', 0)
+                    priority_stats[priority]["count"] += 1
+                    priority_stats[priority]["total_processing_time"] += result.get("processing_time", 0)
+                    priority_stats[priority]["total_queue_wait"] += result.get("queue_wait_time", 0)
+                    priority_stats[priority]["total_value"] += result.get("total_value", 0)
 
             for priority, stats in priority_stats.items():
-                if stats['count'] > 0:
-                    avg_proc = stats['total_processing_time'] / stats['count']
-                    avg_wait = stats['total_queue_wait'] / stats['count']
+                if stats["count"] > 0:
+                    avg_proc = stats["total_processing_time"] / stats["count"]
+                    avg_wait = stats["total_queue_wait"] / stats["count"]
 
                     print(f"  {priority}:")
                     print(f"    Avg Processing: {avg_proc:.2f}s")
@@ -1175,36 +1138,32 @@ async def example_7_advanced_queue_management():
                     print(f"    Total Value: ${stats['total_value']:,.2f}")
 
             # Queue optimization recommendations
-            print(f"\n💡 Queue Optimization Recommendations:")
+            print("\n💡 Queue Optimization Recommendations:")
 
-            if queue_stats['jobs_completed'] > 0:
-                success_rate = (queue_stats['jobs_completed'] / queue_stats['jobs_submitted']) * 100
+            if queue_stats["jobs_completed"] > 0:
+                success_rate = (queue_stats["jobs_completed"] / queue_stats["jobs_submitted"]) * 100
 
                 if success_rate >= 95:
                     print(f"  ✅ Excellent queue performance ({success_rate:.1f}% success)")
-                    print(f"     - Current configuration is working well")
-                    print(f"     - Consider increasing throughput with higher concurrency")
+                    print("     - Current configuration is working well")
+                    print("     - Consider increasing throughput with higher concurrency")
                 elif success_rate >= 80:
                     print(f"  ⚠️  Good queue performance ({success_rate:.1f}% success)")
-                    print(f"     - Minor optimizations recommended")
-                    print(f"     - Review failed job patterns")
+                    print("     - Minor optimizations recommended")
+                    print("     - Review failed job patterns")
                 else:
                     print(f"  ❌ Poor queue performance ({success_rate:.1f}% success)")
-                    print(f"     - Reduce batch sizes for better error isolation")
-                    print(f"     - Implement better error handling")
-                    print(f"     - Review timeout configurations")
+                    print("     - Reduce batch sizes for better error isolation")
+                    print("     - Implement better error handling")
+                    print("     - Review timeout configurations")
 
                 if avg_queue_wait > avg_processing_time:
-                    print(f"  ⏳ High queue wait times detected:")
-                    print(f"     - Increase parallel processing capacity")
-                    print(f"     - Implement queue preemption for high priority jobs")
-                    print(f"     - Consider dedicated queues per priority level")
+                    print("  ⏳ High queue wait times detected:")
+                    print("     - Increase parallel processing capacity")
+                    print("     - Implement queue preemption for high priority jobs")
+                    print("     - Consider dedicated queues per priority level")
 
-            return {
-                'queue_stats': queue_stats,
-                'job_results': all_job_results,
-                'priority_stats': priority_stats
-            }
+            return {"queue_stats": queue_stats, "job_results": all_job_results, "priority_stats": priority_stats}
 
         except Exception as e:
             print(f"❌ Advanced queue management failed: {e}")
@@ -1238,10 +1197,7 @@ async def run_all_advanced_examples():
             print(f"{'=' * 70}")
 
             result = await example_func()
-            results[example_func.__name__] = {
-                'status': 'success',
-                'result': result
-            }
+            results[example_func.__name__] = {"status": "success", "result": result}
 
             print(f"✅ Advanced Example {i} completed successfully!")
 
@@ -1250,10 +1206,7 @@ async def run_all_advanced_examples():
 
         except Exception as e:
             print(f"❌ Advanced Example {i} failed: {e}")
-            results[example_func.__name__] = {
-                'status': 'failed',
-                'error': str(e)
-            }
+            results[example_func.__name__] = {"status": "failed", "error": str(e)}
 
             # Continue with other examples even if one fails
             continue
@@ -1263,7 +1216,7 @@ async def run_all_advanced_examples():
     print("📊 ADVANCED EXAMPLES SUMMARY")
     print(f"{'=' * 70}")
 
-    successful = sum(1 for r in results.values() if r['status'] == 'success')
+    successful = sum(1 for r in results.values() if r["status"] == "success")
     failed = len(results) - successful
 
     print(f"Total Advanced Examples: {len(results)}")
@@ -1271,39 +1224,39 @@ async def run_all_advanced_examples():
     print(f"❌ Failed: {failed}")
 
     if failed > 0:
-        print(f"\nFailed Examples:")
+        print("\nFailed Examples:")
         for name, result in results.items():
-            if result['status'] == 'failed':
+            if result["status"] == "failed":
                 print(f"  ❌ {name}: {result['error']}")
 
     # Performance insights
     if successful > 0:
-        print(f"\n📈 Key Performance Insights:")
+        print("\n📈 Key Performance Insights:")
 
         # Extract some insights from successful examples
-        successful_results = [r['result'] for r in results.values() if r['status'] == 'success']
+        successful_results = [r["result"] for r in results.values() if r["status"] == "success"]
 
-        print(f"  🎯 Successfully demonstrated advanced batch processing patterns")
-        print(f"  ⚡ Tested multiple optimization strategies")
-        print(f"  🛡️  Validated error recovery mechanisms")
-        print(f"  📊 Collected comprehensive performance metrics")
-        print(f"  🧠 Analyzed resource usage patterns")
-        print(f"  ⚙️  Explored configuration tuning strategies")
+        print("  🎯 Successfully demonstrated advanced batch processing patterns")
+        print("  ⚡ Tested multiple optimization strategies")
+        print("  🛡️  Validated error recovery mechanisms")
+        print("  📊 Collected comprehensive performance metrics")
+        print("  🧠 Analyzed resource usage patterns")
+        print("  ⚙️  Explored configuration tuning strategies")
 
-    print(f"\n🎉 Advanced batch processing examples completed!")
-    print(f"📚 These examples demonstrate enterprise-level features:")
-    print(f"   - Large-scale processing optimization")
-    print(f"   - Priority-based job scheduling")
-    print(f"   - Performance monitoring and tuning")
-    print(f"   - Resource management strategies")
-    print(f"   - Advanced error handling patterns")
-    print(f"   - Queue management techniques")
+    print("\n🎉 Advanced batch processing examples completed!")
+    print("📚 These examples demonstrate enterprise-level features:")
+    print("   - Large-scale processing optimization")
+    print("   - Priority-based job scheduling")
+    print("   - Performance monitoring and tuning")
+    print("   - Resource management strategies")
+    print("   - Advanced error handling patterns")
+    print("   - Queue management techniques")
 
-    print(f"\n💡 Next Steps:")
-    print(f"   - Adapt these patterns to your specific use case")
-    print(f"   - Integrate performance monitoring in production")
-    print(f"   - Implement custom priority schemes")
-    print(f"   - Set up automated optimization")
+    print("\n💡 Next Steps:")
+    print("   - Adapt these patterns to your specific use case")
+    print("   - Integrate performance monitoring in production")
+    print("   - Implement custom priority schemes")
+    print("   - Set up automated optimization")
 
     return results
 

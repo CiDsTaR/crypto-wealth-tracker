@@ -1,14 +1,13 @@
 """Validation utilities for the Crypto Wealth Tracker application."""
 
-import json
 import re
-import statistics
 from abc import ABC, abstractmethod
-from collections import defaultdict, deque
+from collections import deque
+from collections.abc import Callable
 from datetime import datetime
 from decimal import Decimal
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Pattern, Type, Union
+from typing import Any
 from urllib.parse import urlparse
 
 import jsonschema
@@ -17,7 +16,7 @@ import jsonschema
 class ValidationError(Exception):
     """Base validation error."""
 
-    def __init__(self, message: str, field: Optional[str] = None):
+    def __init__(self, message: str, field: str | None = None):
         super().__init__(message)
         self.message = message
         self.field = field
@@ -26,12 +25,7 @@ class ValidationError(Exception):
 class ValidationContext:
     """Context information for validation."""
 
-    def __init__(
-            self,
-            field_path: str,
-            data_type: str,
-            value: Any
-    ):
+    def __init__(self, field_path: str, data_type: str, value: Any):
         self.field_path = field_path
         self.data_type = data_type
         self.value = value
@@ -40,13 +34,7 @@ class ValidationContext:
 class DetailedValidationError(ValidationError):
     """Detailed validation error with context and suggestions."""
 
-    def __init__(
-            self,
-            message: str,
-            context: ValidationContext,
-            code: str,
-            suggestions: Optional[List[str]] = None
-    ):
+    def __init__(self, message: str, context: ValidationContext, code: str, suggestions: list[str] | None = None):
         super().__init__(message, context.field_path)
         self.context = context
         self.code = code
@@ -54,6 +42,7 @@ class DetailedValidationError(ValidationError):
 
 
 # Basic Validators
+
 
 def is_valid_ethereum_address(address: Any) -> bool:
     """Validate Ethereum address format.
@@ -71,7 +60,7 @@ def is_valid_ethereum_address(address: Any) -> bool:
         return False
 
     # Must start with 0x and be 42 characters total
-    if not address.startswith('0x') or len(address) != 42:
+    if not address.startswith("0x") or len(address) != 42:
         return False
 
     # Check if the rest are valid hexadecimal characters
@@ -146,7 +135,7 @@ def is_valid_url(url: Any) -> bool:
 
     try:
         parsed = urlparse(url)
-        return parsed.scheme in ['http', 'https'] and bool(parsed.netloc)
+        return parsed.scheme in ["http", "https"] and bool(parsed.netloc)
     except Exception:
         return False
 
@@ -193,7 +182,7 @@ def is_valid_spreadsheet_id(spreadsheet_id: Any) -> bool:
         return False
 
     # Should only contain alphanumeric characters, hyphens, and underscores
-    if not re.match(r'^[a-zA-Z0-9_-]+$', spreadsheet_id):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", spreadsheet_id):
         return False
 
     return True
@@ -201,7 +190,8 @@ def is_valid_spreadsheet_id(spreadsheet_id: Any) -> bool:
 
 # Advanced Validators
 
-def validate_wallet_balance_data(data: Dict[str, Any]) -> None:
+
+def validate_wallet_balance_data(data: dict[str, Any]) -> None:
     """Validate wallet balance data structure.
 
     Args:
@@ -242,7 +232,7 @@ def validate_wallet_balance_data(data: Dict[str, Any]) -> None:
         raise ValidationError("Invalid last_updated timestamp", "last_updated")
 
 
-def validate_token_price_data(data: Dict[str, Any]) -> None:
+def validate_token_price_data(data: dict[str, Any]) -> None:
     """Validate token price data structure.
 
     Args:
@@ -267,7 +257,7 @@ def validate_token_price_data(data: Dict[str, Any]) -> None:
         raise ValidationError("Price cannot be negative", "current_price_usd")
 
 
-def validate_configuration_data(data: Dict[str, Any]) -> None:
+def validate_configuration_data(data: dict[str, Any]) -> None:
     """Validate configuration data structure.
 
     Args:
@@ -298,7 +288,7 @@ def validate_configuration_data(data: Dict[str, Any]) -> None:
             raise ValidationError("Invalid CoinGecko base URL", "coingecko.base_url")
 
 
-def validate_batch_processing_data(data: Dict[str, Any]) -> None:
+def validate_batch_processing_data(data: dict[str, Any]) -> None:
     """Validate batch processing data structure.
 
     Args:
@@ -323,15 +313,16 @@ def validate_batch_processing_data(data: Dict[str, Any]) -> None:
             raise ValidationError(f"Address {i} must be a dict", f"addresses[{i}]")
 
         if "address" not in addr_data:
-            raise ValidationError(f"Missing address field", f"addresses[{i}].address")
+            raise ValidationError("Missing address field", f"addresses[{i}].address")
 
         if not is_valid_ethereum_address(addr_data["address"]):
-            raise ValidationError(f"Invalid Ethereum address", f"addresses[{i}].address")
+            raise ValidationError("Invalid Ethereum address", f"addresses[{i}].address")
 
 
 # Field Validators
 
-def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -> None:
+
+def validate_required_fields(data: dict[str, Any], required_fields: list[str]) -> None:
     """Validate that all required fields are present.
 
     Args:
@@ -346,7 +337,7 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -
             raise ValidationError(f"Missing required field: {field}", field)
 
 
-def validate_field_types(data: Dict[str, Any], type_specs: Dict[str, Type]) -> None:
+def validate_field_types(data: dict[str, Any], type_specs: dict[str, type]) -> None:
     """Validate field types.
 
     Args:
@@ -362,11 +353,11 @@ def validate_field_types(data: Dict[str, Any], type_specs: Dict[str, Type]) -> N
             if not isinstance(value, expected_type):
                 raise ValidationError(
                     f"Field '{field_name}' must be of type {expected_type.__name__}, got {type(value).__name__}",
-                    field_name
+                    field_name,
                 )
 
 
-def validate_field_ranges(data: Dict[str, Any], range_specs: Dict[str, Dict[str, Any]]) -> None:
+def validate_field_ranges(data: dict[str, Any], range_specs: dict[str, dict[str, Any]]) -> None:
     """Validate field value ranges.
 
     Args:
@@ -382,18 +373,16 @@ def validate_field_ranges(data: Dict[str, Any], range_specs: Dict[str, Dict[str,
 
             if "min" in range_spec and value < range_spec["min"]:
                 raise ValidationError(
-                    f"Field '{field_name}' value {value} is below minimum {range_spec['min']}",
-                    field_name
+                    f"Field '{field_name}' value {value} is below minimum {range_spec['min']}", field_name
                 )
 
             if "max" in range_spec and value > range_spec["max"]:
                 raise ValidationError(
-                    f"Field '{field_name}' value {value} is above maximum {range_spec['max']}",
-                    field_name
+                    f"Field '{field_name}' value {value} is above maximum {range_spec['max']}", field_name
                 )
 
 
-def validate_field_patterns(data: Dict[str, Any], pattern_specs: Dict[str, str]) -> None:
+def validate_field_patterns(data: dict[str, Any], pattern_specs: dict[str, str]) -> None:
     """Validate field patterns using regular expressions.
 
     Args:
@@ -409,14 +398,14 @@ def validate_field_patterns(data: Dict[str, Any], pattern_specs: Dict[str, str])
             if isinstance(value, str):
                 if not re.match(pattern, value):
                     raise ValidationError(
-                        f"Field '{field_name}' value '{value}' doesn't match required pattern",
-                        field_name
+                        f"Field '{field_name}' value '{value}' doesn't match required pattern", field_name
                     )
 
 
 # Validation Decorators
 
-def validate_input(field_specs: Dict[str, Dict[str, Any]]):
+
+def validate_input(field_specs: dict[str, dict[str, Any]]):
     """Decorator to validate function input parameters.
 
     Args:
@@ -431,6 +420,7 @@ def validate_input(field_specs: Dict[str, Dict[str, Any]]):
         def wrapper(*args, **kwargs):
             # Get function signature and bind arguments
             import inspect
+
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
@@ -464,7 +454,7 @@ def validate_input(field_specs: Dict[str, Dict[str, Any]]):
     return decorator
 
 
-def validate_output(field_specs: Dict[str, Dict[str, Any]]):
+def validate_output(field_specs: dict[str, dict[str, Any]]):
     """Decorator to validate function output.
 
     Args:
@@ -489,7 +479,8 @@ def validate_output(field_specs: Dict[str, Dict[str, Any]]):
                         if "type" in spec:
                             if not isinstance(value, spec["type"]):
                                 raise ValidationError(
-                                    f"Output field '{field_name}' must be of type {spec['type'].__name__}")
+                                    f"Output field '{field_name}' must be of type {spec['type'].__name__}"
+                                )
 
                         # Choice validation
                         if "choices" in spec and value not in spec["choices"]:
@@ -506,7 +497,7 @@ def validate_output(field_specs: Dict[str, Dict[str, Any]]):
     return decorator
 
 
-def validate_schema(schema: Dict[str, Any]):
+def validate_schema(schema: dict[str, Any]):
     """Decorator to validate data against JSON schema.
 
     Args:
@@ -536,6 +527,7 @@ def validate_schema(schema: Dict[str, Any]):
 
 # Custom Validator Classes
 
+
 class WalletAddressValidator:
     """Validator for wallet addresses."""
 
@@ -555,7 +547,7 @@ class WalletAddressValidator:
 class TokenDataValidator:
     """Validator for token data."""
 
-    def validate(self, token_data: Dict[str, Any]) -> None:
+    def validate(self, token_data: dict[str, Any]) -> None:
         """Validate token data.
 
         Args:
@@ -585,7 +577,7 @@ class TokenDataValidator:
 class ConfigurationValidator:
     """Validator for configuration data."""
 
-    def validate(self, config_data: Dict[str, Any]) -> None:
+    def validate(self, config_data: dict[str, Any]) -> None:
         """Validate configuration data.
 
         Args:
@@ -596,7 +588,7 @@ class ConfigurationValidator:
         """
         validate_configuration_data(config_data)
 
-    def validate_configuration(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_configuration(self, config_data: dict[str, Any]) -> dict[str, Any]:
         """Validate configuration and return result.
 
         Args:
@@ -610,22 +602,14 @@ class ConfigurationValidator:
 
         try:
             self.validate(config_data)
-            return {
-                "valid": True,
-                "errors": errors,
-                "warnings": warnings,
-                "normalized_config": config_data.copy()
-            }
+            return {"valid": True, "errors": errors, "warnings": warnings, "normalized_config": config_data.copy()}
         except ValidationError as e:
             errors.append(str(e))
-            return {
-                "valid": False,
-                "errors": errors,
-                "warnings": warnings
-            }
+            return {"valid": False, "errors": errors, "warnings": warnings}
 
 
 # Validation Chains and Composite Validators
+
 
 class ValidationChain:
     """Chain multiple validators together."""
@@ -642,7 +626,7 @@ class ValidationChain:
         """
         self.validators.append((validator_type, config))
 
-    def validate(self, data: Dict[str, Any]) -> None:
+    def validate(self, data: dict[str, Any]) -> None:
         """Validate data through all validators in chain.
 
         Args:
@@ -665,11 +649,11 @@ class ValidationChain:
 class ConditionalValidator:
     """Conditional validator that applies validation based on conditions."""
 
-    def __init__(self, condition: Callable, validators: Dict[str, Any]):
+    def __init__(self, condition: Callable, validators: dict[str, Any]):
         self.condition = condition
         self.validators = validators
 
-    def validate(self, data: Dict[str, Any]) -> None:
+    def validate(self, data: dict[str, Any]) -> None:
         """Validate data conditionally.
 
         Args:
@@ -691,7 +675,7 @@ class CompositeValidator:
     def __init__(self):
         self.validations = []
 
-    def add_basic_validation(self, field: str, field_type: Type, pattern: Optional[str] = None):
+    def add_basic_validation(self, field: str, field_type: type, pattern: str | None = None):
         """Add basic field validation.
 
         Args:
@@ -711,7 +695,7 @@ class CompositeValidator:
         """
         self.validations.append(("range", field, min_val, max_val))
 
-    def add_choice_validation(self, field: str, choices: List[Any]):
+    def add_choice_validation(self, field: str, choices: list[Any]):
         """Add choice validation.
 
         Args:
@@ -729,7 +713,7 @@ class CompositeValidator:
         """
         self.validations.append(("custom", field, validator_func))
 
-    def validate(self, data: Dict[str, Any]) -> None:
+    def validate(self, data: dict[str, Any]) -> None:
         """Validate data using all configured validations.
 
         Args:
@@ -772,6 +756,7 @@ class CompositeValidator:
 
 # Validation Utilities
 
+
 def sanitize_input(value: Any) -> Any:
     """Sanitize input value.
 
@@ -786,16 +771,16 @@ def sanitize_input(value: Any) -> Any:
         value = value.strip()
 
         # Remove non-alphanumeric characters except common symbols
-        value = re.sub(r'[<>"\']', '', value)
+        value = re.sub(r'[<>"\']', "", value)
 
         # Remove currency symbols and commas for numbers
-        if re.match(r'^[\$,\d.]+$', value):
-            value = re.sub(r'[\$,]', '', value)
+        if re.match(r"^[\$,\d.]+$", value):
+            value = re.sub(r"[\$,]", "", value)
 
     return value
 
 
-def normalize_address(address: Optional[str]) -> Optional[str]:
+def normalize_address(address: str | None) -> str | None:
     """Normalize Ethereum address.
 
     Args:
@@ -811,8 +796,8 @@ def normalize_address(address: Optional[str]) -> Optional[str]:
     address = address.lower()
 
     # Add 0x prefix if missing
-    if not address.startswith('0x'):
-        address = '0x' + address
+    if not address.startswith("0x"):
+        address = "0x" + address
 
     return address
 
@@ -832,7 +817,7 @@ def format_validation_error(error: ValidationError) -> str:
         return f"Validation error: {error.message}"
 
 
-def validate_and_convert(value: Any, target_type: Type) -> Any:
+def validate_and_convert(value: Any, target_type: type) -> Any:
     """Validate and convert value to target type.
 
     Args:
@@ -852,6 +837,7 @@ def validate_and_convert(value: Any, target_type: Type) -> Any:
 
 
 # Error Handling and Collection
+
 
 class ValidationErrorCollector:
     """Collector for multiple validation errors."""
@@ -876,7 +862,7 @@ class ValidationErrorCollector:
         """
         return len(self.errors) > 0
 
-    def get_errors(self) -> List[Dict[str, str]]:
+    def get_errors(self) -> list[dict[str, str]]:
         """Get list of errors.
 
         Returns:
@@ -914,13 +900,9 @@ class ValidationWarningCollector:
             message: Warning message
             severity: Warning severity
         """
-        self.warnings.append({
-            "field": field,
-            "message": message,
-            "severity": severity
-        })
+        self.warnings.append({"field": field, "message": message, "severity": severity})
 
-    def get_warnings(self) -> List[Dict[str, str]]:
+    def get_warnings(self) -> list[dict[str, str]]:
         """Get list of warnings.
 
         Returns:
@@ -944,7 +926,7 @@ class RecoverableValidator:
         """
         self.recovery_strategies[field] = strategy_func
 
-    def validate_and_recover(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_and_recover(self, data: dict[str, Any]) -> dict[str, Any]:
         """Validate data and attempt recovery.
 
         Args:
@@ -964,28 +946,22 @@ class RecoverableValidator:
 
                     if recovered_value != original_value:
                         recovered_data[field] = recovered_value
-                        recoveries.append({
-                            "field": field,
-                            "original": original_value,
-                            "recovered": recovered_value
-                        })
-                except Exception as e:
+                        recoveries.append({"field": field, "original": original_value, "recovered": recovered_value})
+                except Exception:
                     # Recovery failed, keep original value
                     pass
 
-        return {
-            "data": recovered_data,
-            "recoveries": recoveries
-        }
+        return {"data": recovered_data, "recoveries": recoveries}
 
 
 # Validation Extensions and Plugins
+
 
 class ValidatorPlugin(ABC):
     """Abstract base class for validator plugins."""
 
     @abstractmethod
-    def validate(self, value: Any, **kwargs) -> tuple[bool, Optional[str]]:
+    def validate(self, value: Any, **kwargs) -> tuple[bool, str | None]:
         """Validate value.
 
         Args:
@@ -1013,7 +989,7 @@ class ValidationRegistry:
         """
         self.plugins[name] = plugin
 
-    def validate(self, plugin_name: str, value: Any, **kwargs) -> tuple[bool, Optional[str]]:
+    def validate(self, plugin_name: str, value: Any, **kwargs) -> tuple[bool, str | None]:
         """Validate using plugin.
 
         Args:
@@ -1058,6 +1034,7 @@ class ValidationMiddleware(ABC):
 
 # Comprehensive Validation Classes
 
+
 class WalletDataValidator:
     """Comprehensive validator for wallet data."""
 
@@ -1065,7 +1042,7 @@ class WalletDataValidator:
         self.address_validator = WalletAddressValidator()
         self.token_validator = TokenDataValidator()
 
-    def validate_and_clean(self, wallet_data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_and_clean(self, wallet_data: dict[str, Any]) -> dict[str, Any]:
         """Validate and clean wallet data.
 
         Args:
@@ -1099,7 +1076,7 @@ class WalletDataValidator:
 class BatchValidator:
     """Validator for batch operations."""
 
-    def validate_batch(self, items: List[Any], validation_type: str) -> Dict[str, List[Any]]:
+    def validate_batch(self, items: list[Any], validation_type: str) -> dict[str, list[Any]]:
         """Validate batch of items.
 
         Args:
@@ -1131,13 +1108,11 @@ class BatchValidator:
             except Exception:
                 invalid_items.append(item)
 
-        return {
-            "valid": valid_items,
-            "invalid": invalid_items
-        }
+        return {"valid": valid_items, "invalid": invalid_items}
 
 
 # Performance and Optimization Classes
+
 
 class CachedValidator:
     """Validator with caching for performance."""
@@ -1194,7 +1169,7 @@ class LazyValidator:
         """
         self.field_validators[field] = validator_func
 
-    def validate_fields(self, data: Dict[str, Any], fields: List[str]) -> Dict[str, bool]:
+    def validate_fields(self, data: dict[str, Any], fields: list[str]) -> dict[str, bool]:
         """Validate only specified fields.
 
         Args:
@@ -1226,7 +1201,7 @@ class ParallelValidator:
         self.validator_func = validator_func
         self.max_workers = max_workers
 
-    async def validate_batch(self, items: List[Any]) -> List[bool]:
+    async def validate_batch(self, items: list[Any]) -> list[bool]:
         """Validate items in parallel.
 
         Args:
@@ -1252,13 +1227,14 @@ class ParallelValidator:
 
 # Rules Engine
 
+
 class ValidationRulesEngine:
     """Rules-based validation engine."""
 
-    def __init__(self, rules: Dict[str, Any]):
+    def __init__(self, rules: dict[str, Any]):
         self.rules = rules
 
-    def validate(self, rule_name: str, data: Dict[str, Any]) -> 'ValidationResult':
+    def validate(self, rule_name: str, data: dict[str, Any]) -> "ValidationResult":
         """Validate data against rules.
 
         Args:
@@ -1327,14 +1303,16 @@ class ValidationRulesEngine:
                                         prop_type = prop_rules["type"]
                                         if prop_type == "string" and not isinstance(prop_value, str):
                                             errors.append(f"Property '{prop_name}' in array item {i} must be a string")
-                                        elif prop_type == "decimal" and not isinstance(prop_value,
-                                                                                       (int, float, Decimal)):
+                                        elif prop_type == "decimal" and not isinstance(
+                                            prop_value, (int, float, Decimal)
+                                        ):
                                             errors.append(f"Property '{prop_name}' in array item {i} must be a number")
 
                                     if "pattern" in prop_rules and isinstance(prop_value, str):
                                         if not re.match(prop_rules["pattern"], prop_value):
                                             errors.append(
-                                                f"Property '{prop_name}' in array item {i} doesn't match pattern")
+                                                f"Property '{prop_name}' in array item {i} doesn't match pattern"
+                                            )
 
                                     if "minimum" in prop_rules and isinstance(prop_value, (int, float, Decimal)):
                                         if prop_value < prop_rules["minimum"]:
@@ -1346,24 +1324,21 @@ class ValidationRulesEngine:
 class ValidationResult:
     """Result of validation operation."""
 
-    def __init__(self, is_valid: bool, errors: List[str]):
+    def __init__(self, is_valid: bool, errors: list[str]):
         self.is_valid = is_valid
         self.errors = errors
 
 
 # Performance Monitoring
 
+
 class PerformanceValidator:
     """Validator with performance monitoring."""
 
     def __init__(self):
-        self.stats = {
-            "total_validations": 0,
-            "total_time": 0.0,
-            "validation_times": []
-        }
+        self.stats = {"total_validations": 0, "total_time": 0.0, "validation_times": []}
 
-    def validate_batch(self, items: List[Any], validation_type: str) -> Dict[str, List[Any]]:
+    def validate_batch(self, items: list[Any], validation_type: str) -> dict[str, list[Any]]:
         """Validate batch with performance tracking.
 
         Args:
@@ -1394,7 +1369,7 @@ class PerformanceValidator:
 
         return {"valid": valid_items}
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics.
 
         Returns:
@@ -1402,8 +1377,9 @@ class PerformanceValidator:
         """
         if self.stats["total_validations"] > 0:
             average_time = self.stats["total_time"] / self.stats["total_validations"]
-            validations_per_second = self.stats["total_validations"] / self.stats["total_time"] if self.stats[
-                                                                                                       "total_time"] > 0 else 0
+            validations_per_second = (
+                self.stats["total_validations"] / self.stats["total_time"] if self.stats["total_time"] > 0 else 0
+            )
         else:
             average_time = 0
             validations_per_second = 0
@@ -1412,7 +1388,7 @@ class PerformanceValidator:
             "total_validations": self.stats["total_validations"],
             "average_validation_time": average_time,
             "validations_per_second": validations_per_second,
-            "total_time": self.stats["total_time"]
+            "total_time": self.stats["total_time"],
         }
 
 
@@ -1446,7 +1422,7 @@ class ConcurrentValidator:
     def __init__(self, max_workers: int = 4):
         self.max_workers = max_workers
 
-    async def validate_concurrent(self, items: List[Dict[str, Any]], validation_type: str) -> Dict[str, List[Any]]:
+    async def validate_concurrent(self, items: list[dict[str, Any]], validation_type: str) -> dict[str, list[Any]]:
         """Validate items concurrently.
 
         Args:
@@ -1486,7 +1462,4 @@ class ConcurrentValidator:
         valid_items = [items[i] for i, result in enumerate(results) if result]
         invalid_items = [items[i] for i, result in enumerate(results) if not result]
 
-        return {
-            "valid": valid_items,
-            "invalid": invalid_items
-        }
+        return {"valid": valid_items, "invalid": invalid_items}

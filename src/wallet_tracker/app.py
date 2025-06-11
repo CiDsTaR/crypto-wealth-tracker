@@ -1,36 +1,38 @@
 """Application class for dependency injection and component lifecycle management."""
 
-import asyncio
 import logging
 from contextlib import AsyncExitStack
-from typing import Any, Dict, Optional
+from typing import Any
 
-from .config import AppConfig, get_config
 from .clients import (
     CoinGeckoClient,
     EthereumClient,
     GoogleSheetsClient,
 )
-from .processors import BatchProcessor, WalletProcessor
-from .utils import CacheManager, CacheFactory
+from .config import AppConfig, get_config
 from .monitoring.health import HealthChecker
 from .monitoring.metrics import MetricsCollector
+from .processors import BatchProcessor, WalletProcessor
+from .utils import CacheManager
 
 logger = logging.getLogger(__name__)
 
 
 class ApplicationError(Exception):
     """Base exception for application errors."""
+
     pass
 
 
 class InitializationError(ApplicationError):
     """Application initialization error."""
+
     pass
 
 
 class ComponentNotFoundError(ApplicationError):
     """Component not found in application container."""
+
     pass
 
 
@@ -45,14 +47,14 @@ class Application:
     - Graceful shutdown
     """
 
-    def __init__(self, config: Optional[AppConfig] = None):
+    def __init__(self, config: AppConfig | None = None):
         """Initialize application with optional configuration override.
 
         Args:
             config: Configuration override (uses default if None)
         """
         self.config = config or get_config()
-        self._components: Dict[str, Any] = {}
+        self._components: dict[str, Any] = {}
         self._initialized = False
         self._initializing = False  # Track initialization state
         self._exit_stack = AsyncExitStack()
@@ -118,7 +120,7 @@ class Application:
                 else:
                     self._logger.warning("⚠️ Cache manager initialized but no backends are healthy")
 
-            self._components['cache_manager'] = cache_manager
+            self._components["cache_manager"] = cache_manager
 
             # Register for cleanup
             self._exit_stack.push_async_callback(cache_manager.close)
@@ -127,7 +129,7 @@ class Application:
             # In development, we can continue without cache
             if self.config.is_development():
                 self._logger.warning(f"⚠️ Cache initialization failed, continuing without cache: {e}")
-                self._components['cache_manager'] = None
+                self._components["cache_manager"] = None
             else:
                 raise
 
@@ -135,31 +137,25 @@ class Application:
         """Initialize API clients with proper dependency injection."""
         self._logger.debug("Initializing API clients")
 
-        cache_manager = self._components.get('cache_manager')
+        cache_manager = self._components.get("cache_manager")
 
         # Initialize CoinGecko client first (dependency for Ethereum client)
-        coingecko_client = CoinGeckoClient(
-            config=self.config.coingecko,
-            cache_manager=cache_manager
-        )
-        self._components['coingecko_client'] = coingecko_client
+        coingecko_client = CoinGeckoClient(config=self.config.coingecko, cache_manager=cache_manager)
+        self._components["coingecko_client"] = coingecko_client
         self._exit_stack.push_async_callback(coingecko_client.close)
 
         # Initialize Ethereum client with CoinGecko client injected
         ethereum_client = EthereumClient(
             config=self.config.ethereum,
             cache_manager=cache_manager,
-            coingecko_client=coingecko_client  # Inject CoinGecko client
+            coingecko_client=coingecko_client,  # Inject CoinGecko client
         )
-        self._components['ethereum_client'] = ethereum_client
+        self._components["ethereum_client"] = ethereum_client
         self._exit_stack.push_async_callback(ethereum_client.close)
 
         # Initialize Google Sheets client
-        sheets_client = GoogleSheetsClient(
-            config=self.config.google_sheets,
-            cache_manager=cache_manager
-        )
-        self._components['sheets_client'] = sheets_client
+        sheets_client = GoogleSheetsClient(config=self.config.google_sheets, cache_manager=cache_manager)
+        self._components["sheets_client"] = sheets_client
         self._exit_stack.push_async_callback(sheets_client.close)
 
         self._logger.info("🔌 API clients initialized with proper dependency injection")
@@ -169,10 +165,10 @@ class Application:
         self._logger.debug("Initializing processors")
 
         # Get dependencies - use _get_component_internal to avoid initialization check
-        ethereum_client = self._get_component_internal('ethereum_client')
-        coingecko_client = self._get_component_internal('coingecko_client')
-        sheets_client = self._get_component_internal('sheets_client')
-        cache_manager = self._get_component_internal('cache_manager')
+        ethereum_client = self._get_component_internal("ethereum_client")
+        coingecko_client = self._get_component_internal("coingecko_client")
+        sheets_client = self._get_component_internal("sheets_client")
+        cache_manager = self._get_component_internal("cache_manager")
 
         # Initialize wallet processor
         wallet_processor = WalletProcessor(
@@ -180,9 +176,9 @@ class Application:
             ethereum_client=ethereum_client,
             coingecko_client=coingecko_client,
             sheets_client=sheets_client,
-            cache_manager=cache_manager
+            cache_manager=cache_manager,
         )
-        self._components['wallet_processor'] = wallet_processor
+        self._components["wallet_processor"] = wallet_processor
         self._exit_stack.push_async_callback(wallet_processor.close)
 
         # Initialize batch processor
@@ -191,9 +187,9 @@ class Application:
             ethereum_client=ethereum_client,
             coingecko_client=coingecko_client,
             cache_manager=cache_manager,
-            sheets_client=sheets_client
+            sheets_client=sheets_client,
         )
-        self._components['batch_processor'] = batch_processor
+        self._components["batch_processor"] = batch_processor
         self._exit_stack.push_async_callback(batch_processor.close)
 
         self._logger.info("⚙️ Processors initialized")
@@ -205,24 +201,24 @@ class Application:
         try:
             # Initialize health checker - use internal getter to avoid initialization check
             health_checker = HealthChecker(
-                ethereum_client=self._get_component_internal('ethereum_client'),
-                coingecko_client=self._get_component_internal('coingecko_client'),
-                sheets_client=self._get_component_internal('sheets_client'),
-                cache_manager=self._get_component_internal('cache_manager')
+                ethereum_client=self._get_component_internal("ethereum_client"),
+                coingecko_client=self._get_component_internal("coingecko_client"),
+                sheets_client=self._get_component_internal("sheets_client"),
+                cache_manager=self._get_component_internal("cache_manager"),
             )
-            self._components['health_checker'] = health_checker
+            self._components["health_checker"] = health_checker
 
             # Initialize metrics collector
             metrics_collector = MetricsCollector(config=self.config)
-            self._components['metrics_collector'] = metrics_collector
+            self._components["metrics_collector"] = metrics_collector
 
             self._logger.info("📊 Monitoring initialized")
 
         except Exception as e:
             self._logger.warning(f"⚠️ Monitoring initialization failed: {e}")
             # Continue without monitoring
-            self._components['health_checker'] = None
-            self._components['metrics_collector'] = None
+            self._components["health_checker"] = None
+            self._components["metrics_collector"] = None
 
     def _get_component_internal(self, name: str) -> Any:
         """Internal method to get component without initialization check.
@@ -240,9 +236,7 @@ class Application:
         """
         if name not in self._components:
             available = list(self._components.keys())
-            raise ComponentNotFoundError(
-                f"Component '{name}' not found. Available: {available}"
-            )
+            raise ComponentNotFoundError(f"Component '{name}' not found. Available: {available}")
 
         return self._components[name]
 
@@ -264,7 +258,7 @@ class Application:
 
         return self._get_component_internal(name)
 
-    def get_optional_component(self, name: str) -> Optional[Any]:
+    def get_optional_component(self, name: str) -> Any | None:
         """Get a component by name, returning None if not found.
 
         Args:
@@ -300,46 +294,46 @@ class Application:
     # Convenience methods for common components
 
     @property
-    def cache_manager(self) -> Optional[CacheManager]:
+    def cache_manager(self) -> CacheManager | None:
         """Get cache manager component."""
-        return self.get_optional_component('cache_manager')
+        return self.get_optional_component("cache_manager")
 
     @property
     def ethereum_client(self) -> EthereumClient:
         """Get Ethereum client component."""
-        return self.get_component('ethereum_client')
+        return self.get_component("ethereum_client")
 
     @property
     def coingecko_client(self) -> CoinGeckoClient:
         """Get CoinGecko client component."""
-        return self.get_component('coingecko_client')
+        return self.get_component("coingecko_client")
 
     @property
     def sheets_client(self) -> GoogleSheetsClient:
         """Get Google Sheets client component."""
-        return self.get_component('sheets_client')
+        return self.get_component("sheets_client")
 
     @property
     def wallet_processor(self) -> WalletProcessor:
         """Get wallet processor component."""
-        return self.get_component('wallet_processor')
+        return self.get_component("wallet_processor")
 
     @property
     def batch_processor(self) -> BatchProcessor:
         """Get batch processor component."""
-        return self.get_component('batch_processor')
+        return self.get_component("batch_processor")
 
     @property
-    def health_checker(self) -> Optional[HealthChecker]:
+    def health_checker(self) -> HealthChecker | None:
         """Get health checker component."""
-        return self.get_optional_component('health_checker')
+        return self.get_optional_component("health_checker")
 
     @property
-    def metrics_collector(self) -> Optional[MetricsCollector]:
+    def metrics_collector(self) -> MetricsCollector | None:
         """Get metrics collector component."""
-        return self.get_optional_component('metrics_collector')
+        return self.get_optional_component("metrics_collector")
 
-    async def health_check(self) -> Dict[str, bool]:
+    async def health_check(self) -> dict[str, bool]:
         """Perform health check on all services.
 
         Returns:
@@ -358,7 +352,7 @@ class Application:
             self._logger.error(f"❌ Health check failed: {e}")
             return {"error": str(e)}
 
-    async def collect_metrics(self) -> Dict[str, Any]:
+    async def collect_metrics(self) -> dict[str, Any]:
         """Collect metrics from all components.
 
         Returns:
@@ -372,42 +366,42 @@ class Application:
         try:
             # Collect client metrics
             if self.ethereum_client:
-                metrics['ethereum_client'] = self.ethereum_client.get_stats()
+                metrics["ethereum_client"] = self.ethereum_client.get_stats()
 
             if self.coingecko_client:
-                metrics['coingecko_client'] = self.coingecko_client.get_stats()
+                metrics["coingecko_client"] = self.coingecko_client.get_stats()
 
             if self.sheets_client:
-                metrics['sheets_client'] = self.sheets_client.get_stats()
+                metrics["sheets_client"] = self.sheets_client.get_stats()
 
             # Collect cache metrics
             if self.cache_manager:
-                metrics['cache'] = await self.cache_manager.get_stats()
+                metrics["cache"] = await self.cache_manager.get_stats()
 
             # Collect processor metrics
             if self.batch_processor:
-                metrics['batch_processor'] = self.batch_processor.get_stats()
+                metrics["batch_processor"] = self.batch_processor.get_stats()
 
             # Collect application metrics
             if self.metrics_collector:
                 app_metrics = await self.metrics_collector.get_current_metrics()
-                metrics['application'] = app_metrics
+                metrics["application"] = app_metrics
 
         except Exception as e:
             self._logger.error(f"❌ Failed to collect metrics: {e}")
-            metrics['error'] = str(e)
+            metrics["error"] = str(e)
 
         return metrics
 
     async def process_wallets_from_sheets(
-            self,
-            spreadsheet_id: str,
-            input_range: str = "A:B",
-            output_range: str = "A1",
-            input_worksheet: Optional[str] = None,
-            output_worksheet: Optional[str] = None,
-            dry_run: bool = False,
-            **kwargs
+        self,
+        spreadsheet_id: str,
+        input_range: str = "A:B",
+        output_range: str = "A1",
+        input_worksheet: str | None = None,
+        output_worksheet: str | None = None,
+        dry_run: bool = False,
+        **kwargs,
     ) -> Any:
         """Process wallets from Google Sheets.
 
@@ -434,14 +428,10 @@ class Application:
             output_range=output_range if not dry_run else None,
             input_worksheet=input_worksheet,
             output_worksheet=output_worksheet if not dry_run else None,
-            **kwargs
+            **kwargs,
         )
 
-    async def process_wallet_list(
-            self,
-            addresses: list[dict],
-            **kwargs
-    ) -> Any:
+    async def process_wallet_list(self, addresses: list[dict], **kwargs) -> Any:
         """Process a list of wallet addresses.
 
         Args:
@@ -456,10 +446,7 @@ class Application:
 
         processor = self.batch_processor
 
-        return await processor.process_wallet_list(
-            addresses=addresses,
-            **kwargs
-        )
+        return await processor.process_wallet_list(addresses=addresses, **kwargs)
 
     async def shutdown(self) -> None:
         """Shutdown application and cleanup all resources."""
@@ -485,7 +472,7 @@ class Application:
             self._initializing = False
             raise
 
-    def get_component_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_component_status(self) -> dict[str, dict[str, Any]]:
         """Get status information for all components.
 
         Returns:
@@ -496,24 +483,21 @@ class Application:
         for name, component in self._components.items():
             try:
                 component_info = {
-                    'initialized': component is not None,
-                    'type': type(component).__name__ if component else None,
+                    "initialized": component is not None,
+                    "type": type(component).__name__ if component else None,
                 }
 
                 # Add component-specific status if available
-                if hasattr(component, 'get_stats'):
+                if hasattr(component, "get_stats"):
                     try:
-                        component_info['stats'] = component.get_stats()
+                        component_info["stats"] = component.get_stats()
                     except Exception:
-                        component_info['stats'] = 'unavailable'
+                        component_info["stats"] = "unavailable"
 
                 status[name] = component_info
 
             except Exception as e:
-                status[name] = {
-                    'initialized': False,
-                    'error': str(e)
-                }
+                status[name] = {"initialized": False, "error": str(e)}
 
         return status
 
@@ -562,7 +546,7 @@ class Application:
 
 
 # Factory function for easier application creation
-def create_application(config: Optional[AppConfig] = None) -> Application:
+def create_application(config: AppConfig | None = None) -> Application:
     """Create and return a new Application instance.
 
     Args:
@@ -578,14 +562,14 @@ def create_application(config: Optional[AppConfig] = None) -> Application:
 class TemporaryApplication:
     """Context manager for temporary application instances."""
 
-    def __init__(self, config: Optional[AppConfig] = None):
+    def __init__(self, config: AppConfig | None = None):
         """Initialize temporary application.
 
         Args:
             config: Optional configuration override
         """
         self._config = config
-        self._app: Optional[Application] = None
+        self._app: Application | None = None
 
     async def __aenter__(self) -> Application:
         """Create and initialize temporary application."""
@@ -601,11 +585,7 @@ class TemporaryApplication:
 
 
 # Utility function for one-off operations
-async def with_application(
-        func,
-        config: Optional[AppConfig] = None,
-        warm_up: bool = False
-):
+async def with_application(func, config: AppConfig | None = None, warm_up: bool = False):
     """Execute a function with a temporary application instance.
 
     Args:

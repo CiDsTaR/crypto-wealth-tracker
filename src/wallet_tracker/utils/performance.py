@@ -5,15 +5,16 @@ import functools
 import gc
 import json
 import logging
-import psutil
 import statistics
 import threading
 import time
 from collections import defaultdict, deque
-from contextlib import contextmanager, asynccontextmanager
+from collections.abc import Callable
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union
-from datetime import datetime, timedelta
+from typing import Any
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerformanceMetrics:
     """Container for performance metrics."""
-    durations: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
-    counters: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    gauges: Dict[str, float] = field(default_factory=dict)
-    timestamps: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
+
+    durations: dict[str, list[float]] = field(default_factory=lambda: defaultdict(list))
+    counters: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    gauges: dict[str, float] = field(default_factory=dict)
+    timestamps: dict[str, list[float]] = field(default_factory=lambda: defaultdict(list))
 
 
 class Timer:
@@ -69,7 +71,7 @@ class Timer:
         end_time = self._end_time or time.perf_counter()
         return end_time - self._start_time
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get timing statistics."""
         if not self.collect_stats or not self._measurements:
             return {}
@@ -80,7 +82,7 @@ class Timer:
             "average": statistics.mean(self._measurements),
             "min": min(self._measurements),
             "max": max(self._measurements),
-            "median": statistics.median(self._measurements)
+            "median": statistics.median(self._measurements),
         }
 
     def __enter__(self):
@@ -107,13 +109,9 @@ class Profiler:
 
     def __init__(self):
         """Initialize profiler."""
-        self._stats = defaultdict(lambda: {
-            "count": 0,
-            "total_time": 0.0,
-            "min_time": float('inf'),
-            "max_time": 0.0,
-            "times": []
-        })
+        self._stats = defaultdict(
+            lambda: {"count": 0, "total_time": 0.0, "min_time": float("inf"), "max_time": 0.0, "times": []}
+        )
         self._current_stack = []
 
     @contextmanager
@@ -142,7 +140,7 @@ class Profiler:
 
             self._current_stack.pop()
 
-    def get_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_stats(self) -> dict[str, dict[str, Any]]:
         """Get profiling statistics."""
         result = {}
 
@@ -154,12 +152,12 @@ class Profiler:
                     "average_time": stats["total_time"] / stats["count"],
                     "min_time": stats["min_time"],
                     "max_time": stats["max_time"],
-                    "median_time": statistics.median(stats["times"]) if stats["times"] else 0
+                    "median_time": statistics.median(stats["times"]) if stats["times"] else 0,
                 }
 
         return result
 
-    def get_hierarchy(self) -> Dict[str, Any]:
+    def get_hierarchy(self) -> dict[str, Any]:
         """Get hierarchical profiling structure."""
         # Simple implementation - could be enhanced for true hierarchy
         hierarchy = {}
@@ -184,11 +182,7 @@ class AsyncProfiler:
 
     def __init__(self):
         """Initialize async profiler."""
-        self._stats = defaultdict(lambda: {
-            "count": 0,
-            "total_time": 0.0,
-            "times": []
-        })
+        self._stats = defaultdict(lambda: {"count": 0, "total_time": 0.0, "times": []})
 
     @asynccontextmanager
     async def profile(self, name: str):
@@ -211,7 +205,7 @@ class AsyncProfiler:
             stats["total_time"] += duration
             stats["times"].append(duration)
 
-    def get_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_stats(self) -> dict[str, dict[str, Any]]:
         """Get async profiling statistics."""
         result = {}
 
@@ -221,7 +215,7 @@ class AsyncProfiler:
                     "count": stats["count"],
                     "total_time": stats["total_time"],
                     "average_time": stats["total_time"] / stats["count"],
-                    "times": stats["times"]
+                    "times": stats["times"],
                 }
 
         return result
@@ -233,12 +227,7 @@ class MemoryTracker:
     def __init__(self):
         """Initialize memory tracker."""
         self._process = psutil.Process()
-        self._stats = defaultdict(lambda: {
-            "start_memory": 0,
-            "end_memory": 0,
-            "peak_memory": 0,
-            "measurements": []
-        })
+        self._stats = defaultdict(lambda: {"start_memory": 0, "end_memory": 0, "peak_memory": 0, "measurements": []})
 
     def get_current_usage(self) -> float:
         """Get current memory usage in MB."""
@@ -264,14 +253,11 @@ class MemoryTracker:
             end_memory = self.get_current_usage()
             stats["end_memory"] = end_memory
             stats["peak_memory"] = max(peak_memory, end_memory)
-            stats["measurements"].append({
-                "start": start_memory,
-                "end": end_memory,
-                "delta": end_memory - start_memory,
-                "timestamp": time.time()
-            })
+            stats["measurements"].append(
+                {"start": start_memory, "end": end_memory, "delta": end_memory - start_memory, "timestamp": time.time()}
+            )
 
-    def get_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_stats(self) -> dict[str, dict[str, Any]]:
         """Get memory tracking statistics."""
         return dict(self._stats)
 
@@ -317,23 +303,17 @@ class MemoryLeakDetector:
         while self._monitoring:
             try:
                 memory_mb = process.memory_info().rss / 1024 / 1024
-                self._samples.append({
-                    "memory_mb": memory_mb,
-                    "timestamp": time.time()
-                })
+                self._samples.append({"memory_mb": memory_mb, "timestamp": time.time()})
                 await asyncio.sleep(self.sample_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.warning(f"Error in memory monitoring: {e}")
 
-    def check_for_leaks(self) -> Dict[str, Any]:
+    def check_for_leaks(self) -> dict[str, Any]:
         """Check for memory leaks based on collected samples."""
         if len(self._samples) < 10:
-            return {
-                "leak_detected": False,
-                "reason": "Insufficient samples"
-            }
+            return {"leak_detected": False, "reason": "Insufficient samples"}
 
         # Simple leak detection: check if memory is consistently growing
         recent_samples = list(self._samples)[-10:]
@@ -352,7 +332,7 @@ class MemoryLeakDetector:
             "growth_rate": memory_growth / len(recent_samples),
             "correlation": slope,
             "current_memory": memory_values[-1],
-            "sample_count": len(self._samples)
+            "sample_count": len(self._samples),
         }
 
 
@@ -361,10 +341,7 @@ class ObjectTracker:
 
     def __init__(self):
         """Initialize object tracker."""
-        self._stats = defaultdict(lambda: {
-            "objects_created": 0,
-            "creation_times": []
-        })
+        self._stats = defaultdict(lambda: {"objects_created": 0, "creation_times": []})
 
     @contextmanager
     def track_objects(self, name: str):
@@ -391,7 +368,7 @@ class ObjectTracker:
             stats["objects_created"] += estimated_objects
             stats["creation_times"].append(duration)
 
-    def get_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_stats(self) -> dict[str, dict[str, Any]]:
         """Get object tracking statistics."""
         return dict(self._stats)
 
@@ -431,13 +408,9 @@ class MetricsCollector:
         """
         self._metrics.gauges[name] = value
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get all collected metrics."""
-        result = {
-            "durations": {},
-            "counters": dict(self._metrics.counters),
-            "gauges": dict(self._metrics.gauges)
-        }
+        result = {"durations": {}, "counters": dict(self._metrics.counters), "gauges": dict(self._metrics.gauges)}
 
         # Calculate duration statistics
         for name, durations in self._metrics.durations.items():
@@ -448,7 +421,7 @@ class MetricsCollector:
                     "average": statistics.mean(durations),
                     "min": min(durations),
                     "max": max(durations),
-                    "median": statistics.median(durations)
+                    "median": statistics.median(durations),
                 }
 
         return result
@@ -511,12 +484,7 @@ class RealTimeMetrics:
             name: Metric name
             duration: Duration value
         """
-        metric_data = {
-            "name": name,
-            "value": duration,
-            "timestamp": time.time(),
-            "type": "duration"
-        }
+        metric_data = {"name": name, "value": duration, "timestamp": time.time(), "type": "duration"}
 
         # Notify callbacks
         for callback in self._callbacks:
@@ -611,12 +579,7 @@ def async_memoize(maxsize: int = 64):
 class BatchProcessor:
     """Batch processor for performance optimization."""
 
-    def __init__(
-            self,
-            batch_size: int,
-            max_wait_time: float,
-            handler: Callable
-    ):
+    def __init__(self, batch_size: int, max_wait_time: float, handler: Callable):
         """Initialize batch processor.
 
         Args:
@@ -645,8 +608,7 @@ class BatchProcessor:
 
             # Check if we should process the batch
             should_process = (
-                    len(self._batch) >= self.batch_size or
-                    time.time() - self._last_process_time >= self.max_wait_time
+                len(self._batch) >= self.batch_size or time.time() - self._last_process_time >= self.max_wait_time
             )
 
             if should_process:
@@ -673,12 +635,7 @@ class BatchProcessor:
 class AsyncBatchProcessor:
     """Async batch processor."""
 
-    def __init__(
-            self,
-            batch_size: int,
-            max_wait_time: float,
-            handler: Callable
-    ):
+    def __init__(self, batch_size: int, max_wait_time: float, handler: Callable):
         """Initialize async batch processor.
 
         Args:
@@ -707,8 +664,7 @@ class AsyncBatchProcessor:
 
             # Check if we should process the batch
             should_process = (
-                    len(self._batch) >= self.batch_size or
-                    time.time() - self._last_process_time >= self.max_wait_time
+                len(self._batch) >= self.batch_size or time.time() - self._last_process_time >= self.max_wait_time
             )
 
             if should_process:
@@ -735,12 +691,7 @@ class AsyncBatchProcessor:
 class ConnectionPool:
     """Connection pool for performance optimization."""
 
-    def __init__(
-            self,
-            factory: Callable,
-            max_size: int = 10,
-            timeout: float = 5.0
-    ):
+    def __init__(self, factory: Callable, max_size: int = 10, timeout: float = 5.0):
         """Initialize connection pool.
 
         Args:
@@ -783,7 +734,7 @@ class ConnectionPool:
         """Close all connections."""
         with self._lock:
             for conn in list(self._pool) + list(self._in_use):
-                if hasattr(conn, 'close'):
+                if hasattr(conn, "close"):
                     try:
                         conn.close()
                     except Exception:
@@ -800,13 +751,7 @@ class PerformanceReporter:
         """Initialize performance reporter."""
         self._measurements = defaultdict(list)
 
-    def add_measurement(
-            self,
-            operation: str,
-            duration: float,
-            success: bool,
-            **metadata
-    ):
+    def add_measurement(self, operation: str, duration: float, success: bool, **metadata):
         """Add performance measurement.
 
         Args:
@@ -815,14 +760,11 @@ class PerformanceReporter:
             success: Whether operation succeeded
             **metadata: Additional metadata
         """
-        self._measurements[operation].append({
-            "duration": duration,
-            "success": success,
-            "timestamp": time.time(),
-            **metadata
-        })
+        self._measurements[operation].append(
+            {"duration": duration, "success": success, "timestamp": time.time(), **metadata}
+        )
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """Generate performance report."""
         report = {}
 
@@ -841,7 +783,7 @@ class PerformanceReporter:
                 "min_duration": min(durations),
                 "max_duration": max(durations),
                 "median_duration": statistics.median(durations),
-                "total_duration": sum(durations)
+                "total_duration": sum(durations),
             }
 
         return report
@@ -863,12 +805,7 @@ class PerformanceAlerts:
         """
         self._handlers.append(handler)
 
-    def set_threshold(
-            self,
-            metric: str,
-            max_value: Optional[float] = None,
-            min_value: Optional[float] = None
-    ):
+    def set_threshold(self, metric: str, max_value: float | None = None, min_value: float | None = None):
         """Set performance threshold.
 
         Args:
@@ -876,10 +813,7 @@ class PerformanceAlerts:
             max_value: Maximum allowed value
             min_value: Minimum allowed value
         """
-        self._thresholds[metric] = {
-            "max_value": max_value,
-            "min_value": min_value
-        }
+        self._thresholds[metric] = {"max_value": max_value, "min_value": min_value}
 
     def check_metric(self, metric: str, value: float):
         """Check metric against thresholds.
@@ -909,7 +843,7 @@ class PerformanceAlerts:
                 "value": value,
                 "threshold": threshold,
                 "reason": reason,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
 
             for handler in self._handlers:
@@ -934,12 +868,9 @@ class TrendAnalyzer:
             timestamp: Data timestamp
             value: Metric value
         """
-        self._data_points[metric].append({
-            "timestamp": timestamp,
-            "value": value
-        })
+        self._data_points[metric].append({"timestamp": timestamp, "value": value})
 
-    def analyze_trends(self) -> Dict[str, Any]:
+    def analyze_trends(self) -> dict[str, Any]:
         """Analyze trends for all metrics."""
         trends = {}
 
@@ -973,7 +904,7 @@ class TrendAnalyzer:
                 "slope": correlation,  # Simplified
                 "start_value": values[0],
                 "end_value": values[-1],
-                "change_percent": ((values[-1] - values[0]) / values[0] * 100) if values[0] != 0 else 0
+                "change_percent": ((values[-1] - values[0]) / values[0] * 100) if values[0] != 0 else 0,
             }
 
         return trends
@@ -987,12 +918,7 @@ class BottleneckDetector:
         self._measurements = []
 
     def add_measurement(
-            self,
-            component: str,
-            duration: float,
-            cpu_usage: float = 0.0,
-            memory_usage: float = 0.0,
-            **metrics
+        self, component: str, duration: float, cpu_usage: float = 0.0, memory_usage: float = 0.0, **metrics
     ):
         """Add performance measurement.
 
@@ -1003,16 +929,18 @@ class BottleneckDetector:
             memory_usage: Memory usage (0-1)
             **metrics: Additional metrics
         """
-        self._measurements.append({
-            "component": component,
-            "duration": duration,
-            "cpu_usage": cpu_usage,
-            "memory_usage": memory_usage,
-            "timestamp": time.time(),
-            **metrics
-        })
+        self._measurements.append(
+            {
+                "component": component,
+                "duration": duration,
+                "cpu_usage": cpu_usage,
+                "memory_usage": memory_usage,
+                "timestamp": time.time(),
+                **metrics,
+            }
+        )
 
-    def detect_bottlenecks(self) -> List[Dict[str, Any]]:
+    def detect_bottlenecks(self) -> list[dict[str, Any]]:
         """Detect performance bottlenecks."""
         if not self._measurements:
             return []
@@ -1031,19 +959,21 @@ class BottleneckDetector:
 
             # Simple bottleneck detection criteria
             is_bottleneck = (
-                    avg_duration > 0.1 or  # Slow operations
-                    avg_cpu > 0.8 or  # High CPU usage
-                    avg_memory > 0.8  # High memory usage
+                avg_duration > 0.1  # Slow operations
+                or avg_cpu > 0.8  # High CPU usage
+                or avg_memory > 0.8  # High memory usage
             )
 
             if is_bottleneck:
-                bottlenecks.append({
-                    "component": component,
-                    "average_duration": avg_duration,
-                    "average_cpu_usage": avg_cpu,
-                    "average_memory_usage": avg_memory,
-                    "severity": "high" if avg_duration > 1.0 else "medium"
-                })
+                bottlenecks.append(
+                    {
+                        "component": component,
+                        "average_duration": avg_duration,
+                        "average_cpu_usage": avg_cpu,
+                        "average_memory_usage": avg_memory,
+                        "severity": "high" if avg_duration > 1.0 else "medium",
+                    }
+                )
 
         # Sort by severity
         bottlenecks.sort(key=lambda x: x["average_duration"], reverse=True)
@@ -1058,11 +988,7 @@ class BenchmarkRunner:
         """Initialize benchmark runner."""
         pass
 
-    def benchmark(
-            self,
-            functions: Dict[str, Callable],
-            iterations: int = 10
-    ) -> Dict[str, Dict[str, Any]]:
+    def benchmark(self, functions: dict[str, Callable], iterations: int = 10) -> dict[str, dict[str, Any]]:
         """Run benchmarks on functions.
 
         Args:
@@ -1082,7 +1008,7 @@ class BenchmarkRunner:
                 try:
                     result = func()
                     success = True
-                except Exception as e:
+                except Exception:
                     result = None
                     success = False
                 end_time = time.perf_counter()
@@ -1095,7 +1021,7 @@ class BenchmarkRunner:
                 "min": min(times),
                 "max": max(times),
                 "median": statistics.median(times),
-                "total": sum(times)
+                "total": sum(times),
             }
 
         return results
@@ -1108,11 +1034,7 @@ class AsyncBenchmarkRunner:
         """Initialize async benchmark runner."""
         pass
 
-    async def benchmark(
-            self,
-            functions: Dict[str, Callable],
-            iterations: int = 10
-    ) -> Dict[str, Dict[str, Any]]:
+    async def benchmark(self, functions: dict[str, Callable], iterations: int = 10) -> dict[str, dict[str, Any]]:
         """Run async benchmarks on functions.
 
         Args:
@@ -1132,7 +1054,7 @@ class AsyncBenchmarkRunner:
                 try:
                     result = await func()
                     success = True
-                except Exception as e:
+                except Exception:
                     result = None
                     success = False
                 end_time = time.perf_counter()
@@ -1145,7 +1067,7 @@ class AsyncBenchmarkRunner:
                 "min": min(times),
                 "max": max(times),
                 "median": statistics.median(times),
-                "total": sum(times)
+                "total": sum(times),
             }
 
         return results
@@ -1163,11 +1085,8 @@ class LoadTester:
         self.target_function = target_function
 
     def run_load_test(
-            self,
-            concurrent_users: int,
-            duration_seconds: float,
-            ramp_up_time: float = 0.0
-    ) -> Dict[str, Any]:
+        self, concurrent_users: int, duration_seconds: float, ramp_up_time: float = 0.0
+    ) -> dict[str, Any]:
         """Run load test.
 
         Args:
@@ -1183,7 +1102,7 @@ class LoadTester:
             "successful_requests": 0,
             "failed_requests": 0,
             "response_times": [],
-            "start_time": time.time()
+            "start_time": time.time(),
         }
 
         def worker():
@@ -1229,8 +1148,9 @@ class LoadTester:
 
         total_time = time.time() - results["start_time"]
         results["requests_per_second"] = results["total_requests"] / total_time if total_time > 0 else 0
-        results["error_rate"] = results["failed_requests"] / results["total_requests"] if results[
-                                                                                              "total_requests"] > 0 else 0
+        results["error_rate"] = (
+            results["failed_requests"] / results["total_requests"] if results["total_requests"] > 0 else 0
+        )
 
         return results
 
@@ -1246,11 +1166,7 @@ class AsyncLoadTester:
         """
         self.target_function = target_function
 
-    async def run_load_test(
-            self,
-            concurrent_users: int,
-            duration_seconds: float
-    ) -> Dict[str, Any]:
+    async def run_load_test(self, concurrent_users: int, duration_seconds: float) -> dict[str, Any]:
         """Run async load test.
 
         Args:
@@ -1265,7 +1181,7 @@ class AsyncLoadTester:
             "successful_requests": 0,
             "failed_requests": 0,
             "response_times": [],
-            "start_time": time.time()
+            "start_time": time.time(),
         }
 
         async def worker():
@@ -1303,8 +1219,9 @@ class AsyncLoadTester:
 
         total_time = time.time() - results["start_time"]
         results["requests_per_second"] = results["total_requests"] / total_time if total_time > 0 else 0
-        results["error_rate"] = results["failed_requests"] / results["total_requests"] if results[
-                                                                                              "total_requests"] > 0 else 0
+        results["error_rate"] = (
+            results["failed_requests"] / results["total_requests"] if results["total_requests"] > 0 else 0
+        )
 
         return results
 
@@ -1334,12 +1251,9 @@ class PerformanceMonitor:
             if name not in self._operations:
                 self._operations[name] = []
 
-            self._operations[name].append({
-                "duration": duration,
-                "timestamp": time.time()
-            })
+            self._operations[name].append({"duration": duration, "timestamp": time.time()})
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """Generate comprehensive performance report."""
         report = {}
 
@@ -1355,7 +1269,7 @@ class PerformanceMonitor:
                 "average_duration": statistics.mean(durations),
                 "min_duration": min(durations),
                 "max_duration": max(durations),
-                "median_duration": statistics.median(durations)
+                "median_duration": statistics.median(durations),
             }
 
         return report
@@ -1387,7 +1301,7 @@ class RegressionDetector:
         """
         self._current_data[operation].append(duration)
 
-    def detect_regressions(self, threshold_percent: float = 20.0) -> Dict[str, Any]:
+    def detect_regressions(self, threshold_percent: float = 20.0) -> dict[str, Any]:
         """Detect performance regressions.
 
         Args:
@@ -1416,7 +1330,7 @@ class RegressionDetector:
                 "current_average": current_avg,
                 "percentage_change": percentage_change,
                 "regression_detected": regression_detected,
-                "threshold_percent": threshold_percent
+                "threshold_percent": threshold_percent,
             }
 
         return results
@@ -1434,6 +1348,7 @@ def profile(name: str):
 
     def decorator(func):
         if asyncio.iscoroutinefunction(func):
+
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 start_time = time.perf_counter()
@@ -1446,6 +1361,7 @@ def profile(name: str):
 
             return async_wrapper
         else:
+
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 start_time = time.perf_counter()

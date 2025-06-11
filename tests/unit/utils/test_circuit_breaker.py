@@ -2,22 +2,25 @@
 
 import asyncio
 import time
-import pytest
-from unittest.mock import AsyncMock, patch
 from enum import Enum
+
+import pytest
 
 # Note: These tests assume the circuit_breaker.py module will be implemented
 # Currently the module is empty, so this serves as a specification for the implementation
 
+
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Circuit is open, failing fast
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Circuit is open, failing fast
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
 class CircuitBreakerError(Exception):
     """Circuit breaker is open."""
+
     pass
 
 
@@ -32,10 +35,10 @@ class TestCircuitBreaker:
         from wallet_tracker.utils.circuit_breaker import CircuitBreaker
 
         return CircuitBreaker(
-            failure_threshold=5,      # Open after 5 failures
-            recovery_timeout=10.0,    # Try recovery after 10 seconds
+            failure_threshold=5,  # Open after 5 failures
+            recovery_timeout=10.0,  # Try recovery after 10 seconds
             expected_exception=Exception,
-            name="test_circuit"
+            name="test_circuit",
         )
 
     @pytest.mark.asyncio
@@ -47,6 +50,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_successful_call_in_closed_state(self, circuit_breaker):
         """Test successful call when circuit is closed."""
+
         async def successful_function():
             return "success"
 
@@ -58,6 +62,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_failure_count_increment(self, circuit_breaker):
         """Test failure count increments on exceptions."""
+
         async def failing_function():
             raise ValueError("Test error")
 
@@ -71,6 +76,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_circuit_opens_after_threshold(self, circuit_breaker):
         """Test circuit opens after failure threshold is reached."""
+
         async def failing_function():
             raise ValueError("Test error")
 
@@ -186,11 +192,7 @@ class TestCircuitBreaker:
         from wallet_tracker.utils.circuit_breaker import CircuitBreaker
 
         # Only break on ValueError, not on TypeError
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=2,
-            recovery_timeout=5.0,
-            expected_exception=ValueError
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=2, recovery_timeout=5.0, expected_exception=ValueError)
 
         async def value_error_function():
             raise ValueError("This should count")
@@ -249,6 +251,7 @@ class TestCircuitBreakerManager:
     def manager(self):
         """Create circuit breaker manager."""
         from wallet_tracker.utils.circuit_breaker import CircuitBreakerManager
+
         return CircuitBreakerManager()
 
     def test_register_circuit_breaker(self, manager):
@@ -316,7 +319,7 @@ class TestCircuitBreakerIntegration:
         circuit_breaker = CircuitBreaker(
             failure_threshold=3,
             recovery_timeout=0.1,  # Short timeout for testing
-            expected_exception=ConnectionError
+            expected_exception=ConnectionError,
         )
 
         # First 3 calls should fail and open circuit
@@ -408,7 +411,7 @@ class TestCircuitBreakerConfiguration:
 
         circuit_breaker = CircuitBreaker(
             failure_threshold=1,
-            recovery_timeout=0.5  # 500ms
+            recovery_timeout=0.5,  # 500ms
         )
 
         async def test_function():
@@ -438,11 +441,7 @@ class TestCircuitBreakerConfiguration:
         from wallet_tracker.utils.circuit_breaker import CircuitBreaker
 
         # Circuit breaker that requires 3 successes to close from half-open
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=1,
-            recovery_timeout=0.1,
-            success_threshold=3
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0.1, success_threshold=3)
 
         async def successful_function():
             return "success"
@@ -473,10 +472,7 @@ class TestCircuitBreakerAdvancedFeatures:
         async def fallback_function():
             return "fallback response"
 
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=1,
-            fallback=fallback_function
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=1, fallback=fallback_function)
 
         # Force circuit open
         circuit_breaker._state = CircuitState.OPEN
@@ -499,11 +495,7 @@ class TestCircuitBreakerAdvancedFeatures:
         async def health_check():
             return service_healthy
 
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=1,
-            recovery_timeout=0.1,
-            health_check=health_check
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0.1, health_check=health_check)
 
         async def service_function():
             if service_healthy:
@@ -546,10 +538,7 @@ class TestCircuitBreakerAdvancedFeatures:
             events.append("success")
 
         circuit_breaker = CircuitBreaker(
-            failure_threshold=2,
-            on_state_change=on_state_change,
-            on_failure=on_failure,
-            on_success=on_success
+            failure_threshold=2, on_state_change=on_state_change, on_failure=on_failure, on_success=on_success
         )
 
         # Events should be recorded (would require actual implementation to test)
@@ -589,7 +578,7 @@ class TestCircuitBreakerAdvancedFeatures:
 
         circuit_breaker = CircuitBreaker(
             failure_threshold=2,
-            call_timeout=0.1  # 100ms timeout
+            call_timeout=0.1,  # 100ms timeout
         )
 
         async def slow_function():
@@ -624,11 +613,7 @@ class TestCircuitBreakerAdvancedFeatures:
                 raise ConnectionError("Temporary failure")
             return f"success on attempt {attempt_count}"
 
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=5,
-            retry_attempts=3,
-            retry_delay=0.01
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=5, retry_attempts=3, retry_delay=0.01)
 
         result = await circuit_breaker.call(flaky_function)
         assert result == "success on attempt 3"
@@ -689,7 +674,7 @@ class TestCircuitBreakerEdgeCases:
 
         circuit_breaker = CircuitBreaker(
             failure_threshold=1,
-            recovery_timeout=0.001  # 1ms
+            recovery_timeout=0.001,  # 1ms
         )
 
         async def test_function():
@@ -712,10 +697,7 @@ class TestCircuitBreakerEdgeCases:
         async def failing_fallback():
             raise RuntimeError("Fallback also failed")
 
-        circuit_breaker = CircuitBreaker(
-            failure_threshold=1,
-            fallback=failing_fallback
-        )
+        circuit_breaker = CircuitBreaker(failure_threshold=1, fallback=failing_fallback)
 
         # Force circuit open
         circuit_breaker._state = CircuitState.OPEN

@@ -1,12 +1,11 @@
 """Metrics collection and monitoring system for performance tracking."""
 
-import asyncio
 import logging
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from ..config import AppConfig
 
@@ -27,12 +26,12 @@ class Metric:
     """Represents a single metric with its metadata and values."""
 
     def __init__(
-            self,
-            name: str,
-            metric_type: MetricType,
-            description: str = "",
-            unit: str = "",
-            tags: Optional[Dict[str, str]] = None
+        self,
+        name: str,
+        metric_type: MetricType,
+        description: str = "",
+        unit: str = "",
+        tags: dict[str, str] | None = None,
     ):
         self.name = name
         self.type = metric_type
@@ -42,16 +41,14 @@ class Metric:
         self.created_at = datetime.now(UTC)
 
         # Value storage based on type
-        if metric_type == MetricType.COUNTER:
-            self.value = 0
-        elif metric_type == MetricType.GAUGE:
+        if metric_type == MetricType.COUNTER or metric_type == MetricType.GAUGE:
             self.value = 0
         elif metric_type in [MetricType.HISTOGRAM, MetricType.TIMER]:
             self.values = deque(maxlen=1000)  # Keep last 1000 values
             self.sum = 0.0
             self.count = 0
-            self.min_value = float('inf')
-            self.max_value = float('-inf')
+            self.min_value = float("inf")
+            self.max_value = float("-inf")
         elif metric_type == MetricType.RATE:
             self.events = deque(maxlen=1000)  # Keep last 1000 timestamps
 
@@ -93,34 +90,25 @@ class Metric:
         self.events.append(datetime.now(UTC))
         self.last_updated = datetime.now(UTC)
 
-    def get_value(self) -> Union[float, Dict[str, float]]:
+    def get_value(self) -> float | dict[str, float]:
         """Get current metric value(s)."""
         if self.type in [MetricType.COUNTER, MetricType.GAUGE]:
             return self.value
 
         elif self.type in [MetricType.HISTOGRAM, MetricType.TIMER]:
             if self.count == 0:
-                return {
-                    'count': 0,
-                    'sum': 0.0,
-                    'avg': 0.0,
-                    'min': 0.0,
-                    'max': 0.0,
-                    'p50': 0.0,
-                    'p95': 0.0,
-                    'p99': 0.0
-                }
+                return {"count": 0, "sum": 0.0, "avg": 0.0, "min": 0.0, "max": 0.0, "p50": 0.0, "p95": 0.0, "p99": 0.0}
 
             sorted_values = sorted(self.values)
             return {
-                'count': self.count,
-                'sum': self.sum,
-                'avg': self.sum / self.count,
-                'min': self.min_value,
-                'max': self.max_value,
-                'p50': self._percentile(sorted_values, 50),
-                'p95': self._percentile(sorted_values, 95),
-                'p99': self._percentile(sorted_values, 99)
+                "count": self.count,
+                "sum": self.sum,
+                "avg": self.sum / self.count,
+                "min": self.min_value,
+                "max": self.max_value,
+                "p50": self._percentile(sorted_values, 50),
+                "p95": self._percentile(sorted_values, 95),
+                "p99": self._percentile(sorted_values, 99),
             }
 
         elif self.type == MetricType.RATE:
@@ -129,7 +117,7 @@ class Metric:
             # Calculate rates for different time windows
             rates = {}
 
-            for window_name, window_seconds in [('1m', 60), ('5m', 300), ('15m', 900), ('1h', 3600)]:
+            for window_name, window_seconds in [("1m", 60), ("5m", 300), ("15m", 900), ("1h", 3600)]:
                 cutoff = now - timedelta(seconds=window_seconds)
                 events_in_window = [e for e in self.events if e > cutoff]
                 rate_per_second = len(events_in_window) / window_seconds
@@ -137,7 +125,7 @@ class Metric:
 
             return rates
 
-    def _percentile(self, sorted_values: List[float], percentile: int) -> float:
+    def _percentile(self, sorted_values: list[float], percentile: int) -> float:
         """Calculate percentile value."""
         if not sorted_values:
             return 0.0
@@ -155,32 +143,30 @@ class Metric:
 
     def reset(self) -> None:
         """Reset metric to initial state."""
-        if self.type == MetricType.COUNTER:
-            self.value = 0
-        elif self.type == MetricType.GAUGE:
+        if self.type == MetricType.COUNTER or self.type == MetricType.GAUGE:
             self.value = 0
         elif self.type in [MetricType.HISTOGRAM, MetricType.TIMER]:
             self.values.clear()
             self.sum = 0.0
             self.count = 0
-            self.min_value = float('inf')
-            self.max_value = float('-inf')
+            self.min_value = float("inf")
+            self.max_value = float("-inf")
         elif self.type == MetricType.RATE:
             self.events.clear()
 
         self.last_updated = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metric to dictionary representation."""
         return {
-            'name': self.name,
-            'type': self.type.value,
-            'description': self.description,
-            'unit': self.unit,
-            'tags': self.tags,
-            'value': self.get_value(),
-            'created_at': self.created_at.isoformat(),
-            'last_updated': self.last_updated.isoformat()
+            "name": self.name,
+            "type": self.type.value,
+            "description": self.description,
+            "unit": self.unit,
+            "tags": self.tags,
+            "value": self.get_value(),
+            "created_at": self.created_at.isoformat(),
+            "last_updated": self.last_updated.isoformat(),
         }
 
 
@@ -203,12 +189,12 @@ class MetricsCollector:
             config: Application configuration
         """
         self.config = config
-        self._metrics: Dict[str, Metric] = {}
-        self._metric_history: List[Dict[str, Any]] = []
+        self._metrics: dict[str, Metric] = {}
+        self._metric_history: list[dict[str, Any]] = []
         self._max_history_size = 1000
 
         # Performance tracking
-        self._active_timers: Dict[str, float] = {}
+        self._active_timers: dict[str, float] = {}
 
         # Initialize core metrics
         self._initialize_core_metrics()
@@ -217,71 +203,63 @@ class MetricsCollector:
         """Initialize core application metrics."""
 
         # Processing metrics
-        self.register_metric("wallets_processed_total", MetricType.COUNTER,
-                             "Total number of wallets processed", "wallets")
+        self.register_metric(
+            "wallets_processed_total", MetricType.COUNTER, "Total number of wallets processed", "wallets"
+        )
 
-        self.register_metric("wallets_failed_total", MetricType.COUNTER,
-                             "Total number of wallets that failed processing", "wallets")
+        self.register_metric(
+            "wallets_failed_total", MetricType.COUNTER, "Total number of wallets that failed processing", "wallets"
+        )
 
-        self.register_metric("wallets_skipped_total", MetricType.COUNTER,
-                             "Total number of wallets skipped", "wallets")
+        self.register_metric("wallets_skipped_total", MetricType.COUNTER, "Total number of wallets skipped", "wallets")
 
-        self.register_metric("processing_duration", MetricType.HISTOGRAM,
-                             "Time taken to process individual wallets", "seconds")
+        self.register_metric(
+            "processing_duration", MetricType.HISTOGRAM, "Time taken to process individual wallets", "seconds"
+        )
 
-        self.register_metric("batch_processing_duration", MetricType.HISTOGRAM,
-                             "Time taken to process batches", "seconds")
+        self.register_metric(
+            "batch_processing_duration", MetricType.HISTOGRAM, "Time taken to process batches", "seconds"
+        )
 
-        self.register_metric("total_portfolio_value", MetricType.GAUGE,
-                             "Total portfolio value processed", "USD")
+        self.register_metric("total_portfolio_value", MetricType.GAUGE, "Total portfolio value processed", "USD")
 
         # API metrics
-        self.register_metric("api_requests_total", MetricType.COUNTER,
-                             "Total API requests made", "requests")
+        self.register_metric("api_requests_total", MetricType.COUNTER, "Total API requests made", "requests")
 
-        self.register_metric("api_request_duration", MetricType.HISTOGRAM,
-                             "API request response times", "seconds")
+        self.register_metric("api_request_duration", MetricType.HISTOGRAM, "API request response times", "seconds")
 
-        self.register_metric("api_errors_total", MetricType.COUNTER,
-                             "Total API errors", "errors")
+        self.register_metric("api_errors_total", MetricType.COUNTER, "Total API errors", "errors")
 
-        self.register_metric("api_rate_limits_total", MetricType.COUNTER,
-                             "Total API rate limit hits", "rate_limits")
+        self.register_metric("api_rate_limits_total", MetricType.COUNTER, "Total API rate limit hits", "rate_limits")
 
         # Cache metrics
-        self.register_metric("cache_hits_total", MetricType.COUNTER,
-                             "Total cache hits", "hits")
+        self.register_metric("cache_hits_total", MetricType.COUNTER, "Total cache hits", "hits")
 
-        self.register_metric("cache_misses_total", MetricType.COUNTER,
-                             "Total cache misses", "misses")
+        self.register_metric("cache_misses_total", MetricType.COUNTER, "Total cache misses", "misses")
 
-        self.register_metric("cache_operations_duration", MetricType.HISTOGRAM,
-                             "Cache operation response times", "seconds")
+        self.register_metric(
+            "cache_operations_duration", MetricType.HISTOGRAM, "Cache operation response times", "seconds"
+        )
 
         # Business metrics
-        self.register_metric("active_wallets_count", MetricType.GAUGE,
-                             "Number of active wallets found", "wallets")
+        self.register_metric("active_wallets_count", MetricType.GAUGE, "Number of active wallets found", "wallets")
 
-        self.register_metric("inactive_wallets_count", MetricType.GAUGE,
-                             "Number of inactive wallets found", "wallets")
+        self.register_metric("inactive_wallets_count", MetricType.GAUGE, "Number of inactive wallets found", "wallets")
 
-        self.register_metric("processing_rate", MetricType.RATE,
-                             "Rate of wallet processing", "wallets/second")
+        self.register_metric("processing_rate", MetricType.RATE, "Rate of wallet processing", "wallets/second")
 
         # System metrics
-        self.register_metric("memory_usage", MetricType.GAUGE,
-                             "Current memory usage", "bytes")
+        self.register_metric("memory_usage", MetricType.GAUGE, "Current memory usage", "bytes")
 
-        self.register_metric("cpu_usage", MetricType.GAUGE,
-                             "Current CPU usage", "percent")
+        self.register_metric("cpu_usage", MetricType.GAUGE, "Current CPU usage", "percent")
 
     def register_metric(
-            self,
-            name: str,
-            metric_type: MetricType,
-            description: str = "",
-            unit: str = "",
-            tags: Optional[Dict[str, str]] = None
+        self,
+        name: str,
+        metric_type: MetricType,
+        description: str = "",
+        unit: str = "",
+        tags: dict[str, str] | None = None,
     ) -> Metric:
         """Register a new metric.
 
@@ -304,7 +282,7 @@ class MetricsCollector:
         logger.debug(f"Registered metric: {name} ({metric_type.value})")
         return metric
 
-    def get_metric(self, name: str) -> Optional[Metric]:
+    def get_metric(self, name: str) -> Metric | None:
         """Get metric by name.
 
         Args:
@@ -315,7 +293,7 @@ class MetricsCollector:
         """
         return self._metrics.get(name)
 
-    def increment_counter(self, name: str, value: float = 1.0, tags: Optional[Dict[str, str]] = None) -> None:
+    def increment_counter(self, name: str, value: float = 1.0, tags: dict[str, str] | None = None) -> None:
         """Increment a counter metric.
 
         Args:
@@ -326,7 +304,7 @@ class MetricsCollector:
         metric = self._get_or_create_metric(name, MetricType.COUNTER, tags)
         metric.increment(value)
 
-    def set_gauge(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def set_gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Set a gauge metric value.
 
         Args:
@@ -337,7 +315,7 @@ class MetricsCollector:
         metric = self._get_or_create_metric(name, MetricType.GAUGE, tags)
         metric.set(value)
 
-    def observe_histogram(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def observe_histogram(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Observe a value for histogram metric.
 
         Args:
@@ -348,7 +326,7 @@ class MetricsCollector:
         metric = self._get_or_create_metric(name, MetricType.HISTOGRAM, tags)
         metric.observe(value)
 
-    def record_timer(self, name: str, duration: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def record_timer(self, name: str, duration: float, tags: dict[str, str] | None = None) -> None:
         """Record a timer measurement.
 
         Args:
@@ -359,7 +337,7 @@ class MetricsCollector:
         metric = self._get_or_create_metric(name, MetricType.TIMER, tags)
         metric.observe(duration)
 
-    def record_rate_event(self, name: str, tags: Optional[Dict[str, str]] = None) -> None:
+    def record_rate_event(self, name: str, tags: dict[str, str] | None = None) -> None:
         """Record an event for rate metric.
 
         Args:
@@ -369,12 +347,7 @@ class MetricsCollector:
         metric = self._get_or_create_metric(name, MetricType.RATE, tags)
         metric.record_event()
 
-    def _get_or_create_metric(
-            self,
-            name: str,
-            metric_type: MetricType,
-            tags: Optional[Dict[str, str]] = None
-    ) -> Metric:
+    def _get_or_create_metric(self, name: str, metric_type: MetricType, tags: dict[str, str] | None = None) -> Metric:
         """Get existing metric or create new one."""
         metric_key = self._create_metric_key(name, tags)
 
@@ -383,7 +356,7 @@ class MetricsCollector:
 
         return self._metrics[metric_key]
 
-    def _create_metric_key(self, name: str, tags: Optional[Dict[str, str]] = None) -> str:
+    def _create_metric_key(self, name: str, tags: dict[str, str] | None = None) -> str:
         """Create unique key for metric with tags."""
         if not tags:
             return name
@@ -404,7 +377,7 @@ class MetricsCollector:
         self._active_timers[timer_id] = time.time()
         return timer_id
 
-    def stop_timer(self, timer_id: str, metric_name: Optional[str] = None) -> float:
+    def stop_timer(self, timer_id: str, metric_name: str | None = None) -> float:
         """Stop a timer and record the duration.
 
         Args:
@@ -423,7 +396,7 @@ class MetricsCollector:
 
         # Extract name from timer_id if metric_name not provided
         if metric_name is None:
-            metric_name = timer_id.split('_')[0]
+            metric_name = timer_id.split("_")[0]
 
         self.record_timer(metric_name, duration)
         return duration
@@ -440,7 +413,7 @@ class MetricsCollector:
         """
 
         class TimerContext:
-            def __init__(self, collector: 'MetricsCollector', metric_name: str):
+            def __init__(self, collector: "MetricsCollector", metric_name: str):
                 self.collector = collector
                 self.metric_name = metric_name
                 self.timer_id = None
@@ -460,7 +433,7 @@ class MetricsCollector:
         Args:
             processing_results: Results from wallet processing
         """
-        if hasattr(processing_results, 'get_summary_dict'):
+        if hasattr(processing_results, "get_summary_dict"):
             results_dict = processing_results.get_summary_dict()
         elif isinstance(processing_results, dict):
             results_dict = processing_results
@@ -469,42 +442,42 @@ class MetricsCollector:
             return
 
         # Record processing metrics
-        if 'results' in results_dict:
-            results = results_dict['results']
-            self.increment_counter("wallets_processed_total", results.get('processed', 0))
-            self.increment_counter("wallets_failed_total", results.get('failed', 0))
-            self.increment_counter("wallets_skipped_total", results.get('skipped', 0))
+        if "results" in results_dict:
+            results = results_dict["results"]
+            self.increment_counter("wallets_processed_total", results.get("processed", 0))
+            self.increment_counter("wallets_failed_total", results.get("failed", 0))
+            self.increment_counter("wallets_skipped_total", results.get("skipped", 0))
 
         # Record portfolio values
-        if 'portfolio_values' in results_dict:
-            portfolio = results_dict['portfolio_values']
-            self.set_gauge("total_portfolio_value", portfolio.get('total_usd', 0))
+        if "portfolio_values" in results_dict:
+            portfolio = results_dict["portfolio_values"]
+            self.set_gauge("total_portfolio_value", portfolio.get("total_usd", 0))
 
         # Record activity metrics
-        if 'activity' in results_dict:
-            activity = results_dict['activity']
-            self.set_gauge("active_wallets_count", activity.get('active_wallets', 0))
-            self.set_gauge("inactive_wallets_count", activity.get('inactive_wallets', 0))
+        if "activity" in results_dict:
+            activity = results_dict["activity"]
+            self.set_gauge("active_wallets_count", activity.get("active_wallets", 0))
+            self.set_gauge("inactive_wallets_count", activity.get("inactive_wallets", 0))
 
         # Record performance metrics
-        if 'performance' in results_dict:
-            performance = results_dict['performance']
+        if "performance" in results_dict:
+            performance = results_dict["performance"]
 
-            total_time = performance.get('total_time_seconds', 0)
+            total_time = performance.get("total_time_seconds", 0)
             if total_time > 0:
                 self.observe_histogram("batch_processing_duration", total_time)
 
-            avg_time = performance.get('average_time_per_wallet', 0)
+            avg_time = performance.get("average_time_per_wallet", 0)
             if avg_time > 0:
                 self.observe_histogram("processing_duration", avg_time)
 
             # Record API metrics
-            api_calls = performance.get('api_calls_total', 0)
+            api_calls = performance.get("api_calls_total", 0)
             if api_calls > 0:
                 self.increment_counter("api_requests_total", api_calls)
 
             # Record cache metrics
-            cache_hit_rate = performance.get('cache_hit_rate', 0)
+            cache_hit_rate = performance.get("cache_hit_rate", 0)
             if cache_hit_rate > 0:
                 # Estimate cache hits/misses from rate
                 estimated_hits = api_calls * (cache_hit_rate / 100)
@@ -513,11 +486,7 @@ class MetricsCollector:
                 self.increment_counter("cache_misses_total", estimated_misses)
 
     def record_api_call(
-            self,
-            service: str,
-            duration: float,
-            success: bool = True,
-            status_code: Optional[int] = None
+        self, service: str, duration: float, success: bool = True, status_code: int | None = None
     ) -> None:
         """Record metrics for an API call.
 
@@ -527,10 +496,10 @@ class MetricsCollector:
             success: Whether the request was successful
             status_code: HTTP status code
         """
-        tags = {'service': service}
+        tags = {"service": service}
 
         if status_code:
-            tags['status_code'] = str(status_code)
+            tags["status_code"] = str(status_code)
 
         # Record API metrics
         self.increment_counter("api_requests_total", tags=tags)
@@ -543,11 +512,7 @@ class MetricsCollector:
             self.increment_counter("api_rate_limits_total", tags=tags)
 
     def record_cache_operation(
-            self,
-            operation: str,
-            duration: float,
-            hit: Optional[bool] = None,
-            backend: Optional[str] = None
+        self, operation: str, duration: float, hit: bool | None = None, backend: str | None = None
     ) -> None:
         """Record metrics for a cache operation.
 
@@ -557,10 +522,10 @@ class MetricsCollector:
             hit: Whether it was a cache hit (for get operations)
             backend: Cache backend name
         """
-        tags = {'operation': operation}
+        tags = {"operation": operation}
 
         if backend:
-            tags['backend'] = backend
+            tags["backend"] = backend
 
         self.record_timer("cache_operations_duration", duration, tags=tags)
 
@@ -595,7 +560,7 @@ class MetricsCollector:
         except Exception as e:
             logger.warning(f"Failed to collect system metrics: {e}")
 
-    async def get_current_metrics(self) -> Dict[str, Any]:
+    async def get_current_metrics(self) -> dict[str, Any]:
         """Get current values of all metrics.
 
         Returns:
@@ -610,33 +575,29 @@ class MetricsCollector:
             metrics_data[name] = metric.to_dict()
 
         return {
-            'timestamp': datetime.now(UTC).isoformat(),
-            'metrics': metrics_data,
-            'summary': self._generate_summary()
+            "timestamp": datetime.now(UTC).isoformat(),
+            "metrics": metrics_data,
+            "summary": self._generate_summary(),
         }
 
-    def _generate_summary(self) -> Dict[str, Any]:
+    def _generate_summary(self) -> dict[str, Any]:
         """Generate metrics summary."""
-        summary = {
-            'total_metrics': len(self._metrics),
-            'metric_types': defaultdict(int),
-            'last_updated': None
-        }
+        summary = {"total_metrics": len(self._metrics), "metric_types": defaultdict(int), "last_updated": None}
 
         latest_update = None
 
         for metric in self._metrics.values():
-            summary['metric_types'][metric.type.value] += 1
+            summary["metric_types"][metric.type.value] += 1
 
             if latest_update is None or metric.last_updated > latest_update:
                 latest_update = metric.last_updated
 
         if latest_update:
-            summary['last_updated'] = latest_update.isoformat()
+            summary["last_updated"] = latest_update.isoformat()
 
         return dict(summary)
 
-    def export_metrics(self, format: str = 'prometheus') -> str:
+    def export_metrics(self, format: str = "prometheus") -> str:
         """Export metrics in specified format.
 
         Args:
@@ -645,12 +606,13 @@ class MetricsCollector:
         Returns:
             Formatted metrics string
         """
-        if format.lower() == 'prometheus':
+        if format.lower() == "prometheus":
             return self._export_prometheus()
-        elif format.lower() == 'json':
+        elif format.lower() == "json":
             import json
+
             return json.dumps(self.get_current_metrics(), indent=2)
-        elif format.lower() == 'influxdb':
+        elif format.lower() == "influxdb":
             return self._export_influxdb()
         else:
             raise ValueError(f"Unsupported export format: {format}")
@@ -666,12 +628,12 @@ class MetricsCollector:
 
             # Add type comment
             prom_type = {
-                MetricType.COUNTER: 'counter',
-                MetricType.GAUGE: 'gauge',
-                MetricType.HISTOGRAM: 'histogram',
-                MetricType.TIMER: 'histogram',
-                MetricType.RATE: 'gauge'
-            }.get(metric.type, 'gauge')
+                MetricType.COUNTER: "counter",
+                MetricType.GAUGE: "gauge",
+                MetricType.HISTOGRAM: "histogram",
+                MetricType.TIMER: "histogram",
+                MetricType.RATE: "gauge",
+            }.get(metric.type, "gauge")
 
             lines.append(f"# TYPE {name} {prom_type}")
 
@@ -738,17 +700,18 @@ class MetricsCollector:
             return True
         return False
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Get summary statistics of metrics collection.
 
         Returns:
             Summary statistics
         """
         return {
-            'total_metrics': len(self._metrics),
-            'active_timers': len(self._active_timers),
-            'history_size': len(self._metric_history),
-            'collection_started': min(
-                m.created_at for m in self._metrics.values()).isoformat() if self._metrics else None,
-            'last_updated': max(m.last_updated for m in self._metrics.values()).isoformat() if self._metrics else None
+            "total_metrics": len(self._metrics),
+            "active_timers": len(self._active_timers),
+            "history_size": len(self._metric_history),
+            "collection_started": min(m.created_at for m in self._metrics.values()).isoformat()
+            if self._metrics
+            else None,
+            "last_updated": max(m.last_updated for m in self._metrics.values()).isoformat() if self._metrics else None,
         }

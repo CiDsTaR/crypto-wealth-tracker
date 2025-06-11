@@ -1,30 +1,26 @@
 """Tests for monitoring package initialization and utilities."""
 
-import asyncio
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from wallet_tracker.monitoring import (
     # Core classes
     HealthChecker,
-    HealthStatus,
-    ServiceHealth,
     HealthCheckScheduler,
-    MetricsCollector,
+    HealthStatus,
     Metric,
+    MetricsCollector,
     MetricType,
-    quick_health_check,
+    ServiceHealth,
     create_health_alert_handler,
+    create_monitoring_context,
+    get_global_health_checker,
     # Global instance functions
     get_global_metrics_collector,
-    get_global_health_checker,
-    setup_monitoring_system,
     health_check_monitoring_system,
+    quick_health_check,
     # Utility functions
     record_operation_metrics,
-    create_monitoring_context,
+    setup_monitoring_system,
 )
 
 
@@ -65,6 +61,7 @@ class TestGlobalInstances:
     def teardown_method(self):
         """Clean up global instances after each test."""
         import wallet_tracker.monitoring
+
         wallet_tracker.monitoring._global_metrics_collector = None
         wallet_tracker.monitoring._global_health_checker = None
 
@@ -89,7 +86,7 @@ class TestGlobalInstances:
 
     def test_get_global_metrics_collector_with_default_config(self):
         """Test get_global_metrics_collector with default config."""
-        with patch('wallet_tracker.monitoring.get_config') as mock_get_config:
+        with patch("wallet_tracker.monitoring.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_get_config.return_value = mock_config
 
@@ -103,10 +100,7 @@ class TestGlobalInstances:
         mock_ethereum = MagicMock()
         mock_coingecko = MagicMock()
 
-        checker = get_global_health_checker(
-            ethereum_client=mock_ethereum,
-            coingecko_client=mock_coingecko
-        )
+        checker = get_global_health_checker(ethereum_client=mock_ethereum, coingecko_client=mock_coingecko)
 
         assert checker is not None
         assert isinstance(checker, HealthChecker)
@@ -129,6 +123,7 @@ class TestSetupMonitoringSystem:
     def teardown_method(self):
         """Clean up global instances after each test."""
         import wallet_tracker.monitoring
+
         wallet_tracker.monitoring._global_metrics_collector = None
         wallet_tracker.monitoring._global_health_checker = None
 
@@ -139,15 +134,13 @@ class TestSetupMonitoringSystem:
         mock_coingecko = MagicMock()
 
         components = setup_monitoring_system(
-            config=mock_config,
-            ethereum_client=mock_ethereum,
-            coingecko_client=mock_coingecko
+            config=mock_config, ethereum_client=mock_ethereum, coingecko_client=mock_coingecko
         )
 
-        assert 'metrics_collector' in components
-        assert 'health_checker' in components
-        assert isinstance(components['metrics_collector'], MetricsCollector)
-        assert isinstance(components['health_checker'], HealthChecker)
+        assert "metrics_collector" in components
+        assert "health_checker" in components
+        assert isinstance(components["metrics_collector"], MetricsCollector)
+        assert isinstance(components["health_checker"], HealthChecker)
 
     def test_setup_monitoring_system_with_continuous_monitoring(self):
         """Test monitoring system setup with continuous monitoring enabled."""
@@ -158,19 +151,19 @@ class TestSetupMonitoringSystem:
             config=mock_config,
             ethereum_client=mock_ethereum,
             enable_continuous_monitoring=True,
-            monitoring_interval_minutes=1
+            monitoring_interval_minutes=1,
         )
 
-        assert 'metrics_collector' in components
-        assert 'health_checker' in components
-        assert 'scheduler' in components
-        assert 'alert_handler' in components
+        assert "metrics_collector" in components
+        assert "health_checker" in components
+        assert "scheduler" in components
+        assert "alert_handler" in components
 
-        assert isinstance(components['scheduler'], HealthCheckScheduler)
-        assert callable(components['alert_handler'])
+        assert isinstance(components["scheduler"], HealthCheckScheduler)
+        assert callable(components["alert_handler"])
 
         # Clean up scheduler
-        components['scheduler'].stop_scheduled_checks()
+        components["scheduler"].stop_scheduled_checks()
 
     def test_setup_monitoring_system_all_clients(self):
         """Test setup with all client types."""

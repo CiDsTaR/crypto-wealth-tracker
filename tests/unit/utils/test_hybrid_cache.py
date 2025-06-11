@@ -1,12 +1,13 @@
 """Tests for hybrid cache implementation."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 import tempfile
 from pathlib import Path
+from unittest.mock import AsyncMock
 
-from wallet_tracker.utils import HybridCache, FileCache, RedisCache
-from wallet_tracker.utils.cache_interface import CacheError, CacheConnectionError
+import pytest
+
+from wallet_tracker.utils import FileCache, HybridCache, RedisCache
+from wallet_tracker.utils.cache_interface import CacheConnectionError, CacheError
 
 
 class TestHybridCache:
@@ -47,11 +48,7 @@ class TestHybridCache:
     @pytest.fixture
     def hybrid_cache(self, mock_redis_cache, mock_file_cache):
         """Create hybrid cache instance."""
-        return HybridCache(
-            redis_cache=mock_redis_cache,
-            file_cache=mock_file_cache,
-            fallback_on_error=True
-        )
+        return HybridCache(redis_cache=mock_redis_cache, file_cache=mock_file_cache, fallback_on_error=True)
 
     @pytest.mark.asyncio
     async def test_get_redis_success(self, hybrid_cache, mock_redis_cache):
@@ -237,11 +234,7 @@ class TestHybridCache:
     @pytest.mark.asyncio
     async def test_fallback_disabled(self, mock_redis_cache, mock_file_cache):
         """Test behavior when fallback is disabled."""
-        hybrid_cache = HybridCache(
-            redis_cache=mock_redis_cache,
-            file_cache=mock_file_cache,
-            fallback_on_error=False
-        )
+        hybrid_cache = HybridCache(redis_cache=mock_redis_cache, file_cache=mock_file_cache, fallback_on_error=False)
 
         mock_redis_cache.get.side_effect = CacheConnectionError("Redis down")
 
@@ -291,12 +284,7 @@ class TestHybridCacheIntegration:
     async def test_real_file_cache_integration(self, temp_cache_dir):
         """Test hybrid cache with real file cache and mock Redis."""
         # Real file cache
-        file_cache = FileCache(
-            cache_dir=temp_cache_dir,
-            default_ttl=60,
-            max_size_mb=1,
-            key_prefix="test:"
-        )
+        file_cache = FileCache(cache_dir=temp_cache_dir, default_ttl=60, max_size_mb=1, key_prefix="test:")
 
         # Mock Redis cache that always fails
         mock_redis = AsyncMock(spec=RedisCache)
@@ -306,11 +294,7 @@ class TestHybridCacheIntegration:
         mock_redis.get_stats.return_value = {"backend": "redis", "connected": False}
         mock_redis.close = AsyncMock()
 
-        hybrid_cache = HybridCache(
-            redis_cache=mock_redis,
-            file_cache=file_cache,
-            fallback_on_error=True
-        )
+        hybrid_cache = HybridCache(redis_cache=mock_redis, file_cache=file_cache, fallback_on_error=True)
 
         try:
             # Test fallback to file cache

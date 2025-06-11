@@ -14,23 +14,16 @@ FIXES:
 
 import asyncio
 import logging
-from decimal import Decimal
-from typing import List, Dict, Any
 
-from wallet_tracker.app import Application, create_application
-from wallet_tracker.config import get_config, AppConfig
+from wallet_tracker.app import create_application
 from wallet_tracker.clients import (
     EthereumClientError,
-    CoinGeckoClientError,
-    GoogleSheetsClientError,
-    InvalidAddressError
+    InvalidAddressError,
 )
+from wallet_tracker.config import get_config
 
 # Setup logging for examples
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +31,7 @@ def safe_get_from_results(results, *keys, default=0):
     """Safely extract nested values from results, handling both dict and object types."""
     try:
         # If results has get_summary_dict method, use it
-        if hasattr(results, 'get_summary_dict'):
+        if hasattr(results, "get_summary_dict"):
             results = results.get_summary_dict()
 
         # Navigate through nested keys
@@ -70,27 +63,23 @@ async def example_1_simple_wallet_analysis():
     async with create_application() as app:
         try:
             # Process a single wallet
-            addresses = [{
-                "address": wallet_address,
-                "label": "Example Wallet",
-                "row_number": 1
-            }]
+            addresses = [{"address": wallet_address, "label": "Example Wallet", "row_number": 1}]
 
             print(f"📊 Analyzing wallet: {wallet_address[:10]}...{wallet_address[-6:]}")
 
             results = await app.process_wallet_list(addresses)
 
             # Convert results to dict if it's an object
-            if hasattr(results, 'get_summary_dict'):
+            if hasattr(results, "get_summary_dict"):
                 results_dict = results.get_summary_dict()
             else:
                 results_dict = results
 
             # Display results using safe extraction
-            total_value = safe_get_from_results(results_dict, 'portfolio_values', 'total_usd', default=0)
-            processing_time = safe_get_from_results(results_dict, 'performance', 'total_time_seconds', default=0)
+            total_value = safe_get_from_results(results_dict, "portfolio_values", "total_usd", default=0)
+            processing_time = safe_get_from_results(results_dict, "performance", "total_time_seconds", default=0)
 
-            print(f"✅ Analysis completed!")
+            print("✅ Analysis completed!")
             print(f"   Total Value: ${total_value:,.2f}")
             print(f"   Processing Time: {processing_time:.1f}s")
 
@@ -121,29 +110,25 @@ async def example_2_multiple_wallets():
             # Format addresses for processing
             addresses = []
             for i, addr in enumerate(wallet_addresses):
-                addresses.append({
-                    "address": addr,
-                    "label": f"Wallet {i + 1}",
-                    "row_number": i + 1
-                })
+                addresses.append({"address": addr, "label": f"Wallet {i + 1}", "row_number": i + 1})
 
             print(f"📊 Analyzing {len(addresses)} wallets...")
 
             results = await app.process_wallet_list(addresses)
 
             # Convert results to dict if it's an object
-            if hasattr(results, 'get_summary_dict'):
+            if hasattr(results, "get_summary_dict"):
                 results_dict = results.get_summary_dict()
             else:
                 results_dict = results
 
             # Display summary using safe extraction
-            processed = safe_get_from_results(results_dict, 'results', 'processed', default=0)
-            total_value = safe_get_from_results(results_dict, 'portfolio_values', 'total_usd', default=0)
-            average_value = safe_get_from_results(results_dict, 'portfolio_values', 'average_usd', default=0)
-            active_wallets = safe_get_from_results(results_dict, 'activity', 'active_wallets', default=0)
+            processed = safe_get_from_results(results_dict, "results", "processed", default=0)
+            total_value = safe_get_from_results(results_dict, "portfolio_values", "total_usd", default=0)
+            average_value = safe_get_from_results(results_dict, "portfolio_values", "average_usd", default=0)
+            active_wallets = safe_get_from_results(results_dict, "activity", "active_wallets", default=0)
 
-            print(f"✅ Analysis completed!")
+            print("✅ Analysis completed!")
             print(f"   Wallets Processed: {processed}")
             print(f"   Total Portfolio Value: ${total_value:,.2f}")
             print(f"   Average Value: ${average_value:,.2f}")
@@ -174,9 +159,7 @@ async def example_3_health_check():
 
             # Check if all critical services are healthy
             critical_services = ["ethereum_client", "coingecko_client"]
-            all_critical_healthy = all(
-                health_status.get(service, False) for service in critical_services
-            )
+            all_critical_healthy = all(health_status.get(service, False) for service in critical_services)
 
             if all_critical_healthy:
                 print("✅ All critical services are healthy - ready for processing!")
@@ -246,32 +229,28 @@ async def example_5_error_handling():
                     print(f"⏭️  Skipping empty address at position {i}")
                     continue
 
-                addresses = [{
-                    "address": addr,
-                    "label": f"Test Wallet {i}",
-                    "row_number": i
-                }]
+                addresses = [{"address": addr, "label": f"Test Wallet {i}", "row_number": i}]
 
                 print(f"🔍 Testing address: {addr[:20]}...")
 
                 results = await app.process_wallet_list(addresses)
 
                 # Convert results to dict if it's an object
-                if hasattr(results, 'get_summary_dict'):
+                if hasattr(results, "get_summary_dict"):
                     results_dict = results.get_summary_dict()
                 else:
                     results_dict = results
 
-                processed = safe_get_from_results(results_dict, 'results', 'processed', default=0)
+                processed = safe_get_from_results(results_dict, "results", "processed", default=0)
                 if processed > 0:
-                    print(f"  ✅ Successfully processed")
+                    print("  ✅ Successfully processed")
                     processed_count += 1
                 else:
-                    print(f"  ⚠️  Address was skipped or failed")
+                    print("  ⚠️  Address was skipped or failed")
                     error_count += 1
 
             except InvalidAddressError:
-                print(f"  ❌ Invalid address format")
+                print("  ❌ Invalid address format")
                 error_count += 1
 
             except EthereumClientError as e:
@@ -299,29 +278,29 @@ async def example_6_metrics_collection():
             print("Application Metrics:")
 
             # Display Ethereum client metrics
-            if 'ethereum_client' in metrics:
-                eth_metrics = metrics['ethereum_client']
-                print(f"\n🔗 Ethereum Client:")
+            if "ethereum_client" in metrics:
+                eth_metrics = metrics["ethereum_client"]
+                print("\n🔗 Ethereum Client:")
                 print(f"  Portfolio Requests: {eth_metrics.get('portfolio_requests', 0)}")
                 print(f"  Cache Hits: {eth_metrics.get('cache_hits', 0)}")
                 print(f"  API Errors: {eth_metrics.get('api_errors', 0)}")
                 print(f"  Rate Limit: {eth_metrics.get('rate_limit', 0)} req/min")
 
             # Display CoinGecko client metrics
-            if 'coingecko_client' in metrics:
-                cg_metrics = metrics['coingecko_client']
-                print(f"\n💰 CoinGecko Client:")
+            if "coingecko_client" in metrics:
+                cg_metrics = metrics["coingecko_client"]
+                print("\n💰 CoinGecko Client:")
                 print(f"  Price Requests: {cg_metrics.get('price_requests', 0)}")
                 print(f"  Rate Limit Errors: {cg_metrics.get('rate_limit_errors', 0)}")
                 print(f"  Has PRO API Key: {cg_metrics.get('has_pro_api', False)}")
 
             # Display cache metrics
-            if 'cache' in metrics:
-                cache_metrics = metrics['cache']
-                print(f"\n💾 Cache System:")
+            if "cache" in metrics:
+                cache_metrics = metrics["cache"]
+                print("\n💾 Cache System:")
                 for backend, stats in cache_metrics.items():
                     if isinstance(stats, dict):
-                        hit_rate = stats.get('hit_rate_percent', 0)
+                        hit_rate = stats.get("hit_rate_percent", 0)
                         print(f"  {backend}: {hit_rate:.1f}% hit rate")
 
             return metrics
@@ -339,16 +318,8 @@ async def example_7_dry_run_mode():
 
     # Example addresses for testing
     test_addresses = [
-        {
-            "address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B",
-            "label": "Test Wallet 1",
-            "row_number": 1
-        },
-        {
-            "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-            "label": "Test Wallet 2",
-            "row_number": 2
-        }
+        {"address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B", "label": "Test Wallet 1", "row_number": 1},
+        {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "label": "Test Wallet 2", "row_number": 2},
     ]
 
     async with create_application() as app:
@@ -359,15 +330,15 @@ async def example_7_dry_run_mode():
             results = await app.process_wallet_list(test_addresses)
 
             # Convert results to dict if it's an object
-            if hasattr(results, 'get_summary_dict'):
+            if hasattr(results, "get_summary_dict"):
                 results_dict = results.get_summary_dict()
             else:
                 results_dict = results
 
             # Display results using safe extraction
-            processed = safe_get_from_results(results_dict, 'results', 'processed', default=0)
-            total_value = safe_get_from_results(results_dict, 'portfolio_values', 'total_usd', default=0)
-            processing_time = safe_get_from_results(results_dict, 'performance', 'total_time_seconds', default=0)
+            processed = safe_get_from_results(results_dict, "results", "processed", default=0)
+            total_value = safe_get_from_results(results_dict, "portfolio_values", "total_usd", default=0)
+            processing_time = safe_get_from_results(results_dict, "performance", "total_time_seconds", default=0)
 
             print("📊 Dry Run Results:")
             print(f"  Wallets that would be processed: {processed}")
@@ -391,16 +362,14 @@ async def example_8_working_with_results():
     async with create_application() as app:
         try:
             # Process some wallets
-            addresses = [{
-                "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-                "label": "Vitalik Buterin",
-                "row_number": 1
-            }]
+            addresses = [
+                {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "label": "Vitalik Buterin", "row_number": 1}
+            ]
 
             results = await app.process_wallet_list(addresses)
 
             # Convert results to dict if it's an object
-            if hasattr(results, 'get_summary_dict'):
+            if hasattr(results, "get_summary_dict"):
                 results_dict = results.get_summary_dict()
             else:
                 results_dict = results
@@ -408,27 +377,27 @@ async def example_8_working_with_results():
             print("📊 Detailed Results Analysis:")
 
             # Extract different sections of results using safe extraction
-            print(f"\n📥 Input Summary:")
-            total_wallets = safe_get_from_results(results_dict, 'input', 'total_wallets', default=0)
+            print("\n📥 Input Summary:")
+            total_wallets = safe_get_from_results(results_dict, "input", "total_wallets", default=0)
             print(f"  Total wallets provided: {total_wallets}")
 
-            print(f"\n⚙️ Processing Summary:")
-            processed = safe_get_from_results(results_dict, 'results', 'processed', default=0)
-            skipped = safe_get_from_results(results_dict, 'results', 'skipped', default=0)
-            failed = safe_get_from_results(results_dict, 'results', 'failed', default=0)
-            success_rate = safe_get_from_results(results_dict, 'results', 'success_rate', default=0)
+            print("\n⚙️ Processing Summary:")
+            processed = safe_get_from_results(results_dict, "results", "processed", default=0)
+            skipped = safe_get_from_results(results_dict, "results", "skipped", default=0)
+            failed = safe_get_from_results(results_dict, "results", "failed", default=0)
+            success_rate = safe_get_from_results(results_dict, "results", "success_rate", default=0)
 
             print(f"  Successfully processed: {processed}")
             print(f"  Skipped (inactive): {skipped}")
             print(f"  Failed: {failed}")
             print(f"  Success rate: {success_rate:.1f}%")
 
-            print(f"\n💰 Portfolio Analysis:")
-            total_usd = safe_get_from_results(results_dict, 'portfolio_values', 'total_usd', default=0)
-            average_usd = safe_get_from_results(results_dict, 'portfolio_values', 'average_usd', default=0)
-            median_usd = safe_get_from_results(results_dict, 'portfolio_values', 'median_usd', default=0)
-            max_usd = safe_get_from_results(results_dict, 'portfolio_values', 'max_usd', default=0)
-            min_usd = safe_get_from_results(results_dict, 'portfolio_values', 'min_usd', default=0)
+            print("\n💰 Portfolio Analysis:")
+            total_usd = safe_get_from_results(results_dict, "portfolio_values", "total_usd", default=0)
+            average_usd = safe_get_from_results(results_dict, "portfolio_values", "average_usd", default=0)
+            median_usd = safe_get_from_results(results_dict, "portfolio_values", "median_usd", default=0)
+            max_usd = safe_get_from_results(results_dict, "portfolio_values", "max_usd", default=0)
+            min_usd = safe_get_from_results(results_dict, "portfolio_values", "min_usd", default=0)
 
             print(f"  Total value: ${total_usd:,.2f}")
             print(f"  Average value: ${average_usd:,.2f}")
@@ -436,22 +405,22 @@ async def example_8_working_with_results():
             print(f"  Highest wallet: ${max_usd:,.2f}")
             print(f"  Lowest wallet: ${min_usd:,.2f}")
 
-            print(f"\n🪙 Token Distribution:")
-            eth_holders = safe_get_from_results(results_dict, 'token_holders', 'eth', default=0)
-            usdc_holders = safe_get_from_results(results_dict, 'token_holders', 'usdc', default=0)
-            usdt_holders = safe_get_from_results(results_dict, 'token_holders', 'usdt', default=0)
-            dai_holders = safe_get_from_results(results_dict, 'token_holders', 'dai', default=0)
+            print("\n🪙 Token Distribution:")
+            eth_holders = safe_get_from_results(results_dict, "token_holders", "eth", default=0)
+            usdc_holders = safe_get_from_results(results_dict, "token_holders", "usdc", default=0)
+            usdt_holders = safe_get_from_results(results_dict, "token_holders", "usdt", default=0)
+            dai_holders = safe_get_from_results(results_dict, "token_holders", "dai", default=0)
 
             print(f"  ETH holders: {eth_holders}")
             print(f"  USDC holders: {usdc_holders}")
             print(f"  USDT holders: {usdt_holders}")
             print(f"  DAI holders: {dai_holders}")
 
-            print(f"\n⚡ Performance Metrics:")
-            total_time = safe_get_from_results(results_dict, 'performance', 'total_time_seconds', default=0)
-            avg_time = safe_get_from_results(results_dict, 'performance', 'average_time_per_wallet', default=0)
-            cache_hit_rate = safe_get_from_results(results_dict, 'performance', 'cache_hit_rate', default=0)
-            api_calls = safe_get_from_results(results_dict, 'performance', 'api_calls_total', default=0)
+            print("\n⚡ Performance Metrics:")
+            total_time = safe_get_from_results(results_dict, "performance", "total_time_seconds", default=0)
+            avg_time = safe_get_from_results(results_dict, "performance", "average_time_per_wallet", default=0)
+            cache_hit_rate = safe_get_from_results(results_dict, "performance", "cache_hit_rate", default=0)
+            api_calls = safe_get_from_results(results_dict, "performance", "api_calls_total", default=0)
 
             print(f"  Total processing time: {total_time:.1f}s")
             print(f"  Average time per wallet: {avg_time:.2f}s")
@@ -475,16 +444,8 @@ async def example_9_custom_processing_logic():
         try:
             # Example of adding custom monitoring during processing
             addresses = [
-                {
-                    "address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B",
-                    "label": "Wallet 1",
-                    "row_number": 1
-                },
-                {
-                    "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-                    "label": "Wallet 2",
-                    "row_number": 2
-                }
+                {"address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B", "label": "Wallet 1", "row_number": 1},
+                {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "label": "Wallet 2", "row_number": 2},
             ]
 
             print("🔍 Starting custom processing with monitoring...")
@@ -498,6 +459,7 @@ async def example_9_custom_processing_logic():
 
             # Process with timing
             import time
+
             start_time = time.time()
 
             results = await app.process_wallet_list(addresses)
@@ -506,14 +468,14 @@ async def example_9_custom_processing_logic():
             processing_duration = end_time - start_time
 
             # Convert results to dict if it's an object
-            if hasattr(results, 'get_summary_dict'):
+            if hasattr(results, "get_summary_dict"):
                 results_dict = results.get_summary_dict()
             else:
                 results_dict = results
 
             # Post-processing analysis using safe extraction
-            processed_count = safe_get_from_results(results_dict, 'results', 'processed', default=0)
-            total_value = safe_get_from_results(results_dict, 'portfolio_values', 'total_usd', default=0)
+            processed_count = safe_get_from_results(results_dict, "results", "processed", default=0)
+            total_value = safe_get_from_results(results_dict, "portfolio_values", "total_usd", default=0)
 
             print(f"⏱️  Custom timing: {processing_duration:.2f}s")
             if processing_duration > 0:
@@ -523,17 +485,17 @@ async def example_9_custom_processing_logic():
             # Check final metrics
             final_metrics = await app.collect_metrics()
 
-            if 'ethereum_client' in final_metrics:
-                api_calls = final_metrics['ethereum_client'].get('portfolio_requests', 0)
+            if "ethereum_client" in final_metrics:
+                api_calls = final_metrics["ethereum_client"].get("portfolio_requests", 0)
                 print(f"🔗 Total Ethereum API calls: {api_calls}")
 
             return {
-                'results': results_dict,
-                'custom_metrics': {
-                    'processing_duration': processing_duration,
-                    'processing_rate': processed_count / processing_duration if processing_duration > 0 else 0,
-                    'value_per_second': total_value / processing_duration if processing_duration > 0 else 0
-                }
+                "results": results_dict,
+                "custom_metrics": {
+                    "processing_duration": processing_duration,
+                    "processing_rate": processed_count / processing_duration if processing_duration > 0 else 0,
+                    "value_per_second": total_value / processing_duration if processing_duration > 0 else 0,
+                },
             }
 
         except Exception as e:
@@ -570,10 +532,7 @@ async def run_all_examples():
             print(f"{'=' * 60}")
 
             result = await example_func()
-            results[example_func.__name__] = {
-                'status': 'success',
-                'result': result
-            }
+            results[example_func.__name__] = {"status": "success", "result": result}
 
             print(f"✅ Example {i} completed successfully!")
 
@@ -582,10 +541,7 @@ async def run_all_examples():
 
         except Exception as e:
             print(f"❌ Example {i} failed: {e}")
-            results[example_func.__name__] = {
-                'status': 'failed',
-                'error': str(e)
-            }
+            results[example_func.__name__] = {"status": "failed", "error": str(e)}
 
             # Continue with other examples even if one fails
             continue
@@ -595,7 +551,7 @@ async def run_all_examples():
     print("📊 EXAMPLES SUMMARY")
     print(f"{'=' * 60}")
 
-    successful = sum(1 for r in results.values() if r['status'] == 'success')
+    successful = sum(1 for r in results.values() if r["status"] == "success")
     failed = len(results) - successful
 
     print(f"Total Examples: {len(results)}")
@@ -603,15 +559,15 @@ async def run_all_examples():
     print(f"❌ Failed: {failed}")
 
     if failed > 0:
-        print(f"\nFailed Examples:")
+        print("\nFailed Examples:")
         for name, result in results.items():
-            if result['status'] == 'failed':
+            if result["status"] == "failed":
                 print(f"  ❌ {name}: {result['error']}")
 
-    print(f"\n🎉 Basic usage examples completed!")
-    print(f"📚 Check the other example files for more advanced usage patterns:")
-    print(f"   - examples/advanced_batch.py")
-    print(f"   - examples/sheets_integration.py")
+    print("\n🎉 Basic usage examples completed!")
+    print("📚 Check the other example files for more advanced usage patterns:")
+    print("   - examples/advanced_batch.py")
+    print("   - examples/sheets_integration.py")
 
     return results
 

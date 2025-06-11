@@ -1,10 +1,10 @@
 """Type definitions for individual wallet processing operations."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class WalletStatus(str, Enum):
@@ -49,50 +49,50 @@ class WalletProcessingJob:
     status: WalletStatus = WalletStatus.PENDING
     priority: ProcessingPriority = ProcessingPriority.NORMAL
     created_at: datetime = field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Processing results
-    eth_balance: Optional[Decimal] = None
-    token_balances: Dict[str, Decimal] = field(default_factory=dict)
-    token_prices: Dict[str, Decimal] = field(default_factory=dict)
-    total_value_usd: Optional[Decimal] = None
+    eth_balance: Decimal | None = None
+    token_balances: dict[str, Decimal] = field(default_factory=dict)
+    token_prices: dict[str, Decimal] = field(default_factory=dict)
+    total_value_usd: Decimal | None = None
 
     # Activity information
     transaction_count: int = 0
-    last_transaction_timestamp: Optional[datetime] = None
+    last_transaction_timestamp: datetime | None = None
     is_active: bool = True
 
     # Error handling
-    error_message: Optional[str] = None
+    error_message: str | None = None
     retry_count: int = 0
     max_retries: int = 3
-    skip_reason: Optional[SkipReason] = None
+    skip_reason: SkipReason | None = None
 
     # Processing metadata
-    processing_time_seconds: Optional[float] = None
+    processing_time_seconds: float | None = None
     cache_hit: bool = False
     api_calls_made: int = 0
 
     def mark_started(self) -> None:
         """Mark job as started."""
         self.status = WalletStatus.PROCESSING
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
 
     def mark_completed(self, total_value: Decimal) -> None:
         """Mark job as completed successfully."""
         self.status = WalletStatus.COMPLETED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.total_value_usd = total_value
 
         if self.started_at:
             duration = self.completed_at - self.started_at
             self.processing_time_seconds = duration.total_seconds()
 
-    def mark_failed(self, error: str, skip_reason: Optional[SkipReason] = None) -> None:
+    def mark_failed(self, error: str, skip_reason: SkipReason | None = None) -> None:
         """Mark job as failed."""
         self.status = WalletStatus.FAILED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.error_message = error
         self.skip_reason = skip_reason
 
@@ -103,7 +103,7 @@ class WalletProcessingJob:
     def mark_skipped(self, reason: SkipReason, message: str = "") -> None:
         """Mark job as skipped."""
         self.status = WalletStatus.SKIPPED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.skip_reason = reason
         self.error_message = message or reason.value
 
@@ -129,7 +129,7 @@ class WalletProcessingJob:
             self.processing_time_seconds = None
             self.error_message = None
 
-    def get_processing_summary(self) -> Dict[str, Any]:
+    def get_processing_summary(self) -> dict[str, Any]:
         """Get summary of processing results."""
         return {
             "address": self.address,
@@ -155,7 +155,7 @@ class ProcessingResults:
 
     # Input information
     total_wallets_input: int
-    batch_config: Optional[Any] = None  # Will be BatchConfig but avoiding circular import
+    batch_config: Any | None = None  # Will be BatchConfig but avoiding circular import
 
     # Processing statistics
     wallets_processed: int = 0
@@ -186,14 +186,14 @@ class ProcessingResults:
     api_calls_total: int = 0
 
     # Error breakdown
-    skip_reasons: Dict[SkipReason, int] = field(default_factory=dict)
-    error_types: Dict[str, int] = field(default_factory=dict)
+    skip_reasons: dict[SkipReason, int] = field(default_factory=dict)
+    error_types: dict[str, int] = field(default_factory=dict)
 
     # Timestamps
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
-    def finalize_results(self, jobs: List[WalletProcessingJob]) -> None:
+    def finalize_results(self, jobs: list[WalletProcessingJob]) -> None:
         """Calculate final statistics from completed jobs."""
         if not jobs:
             return
@@ -216,9 +216,9 @@ class ProcessingResults:
             sorted_values = sorted(values)
             n = len(sorted_values)
             if n % 2 == 0:
-                self.median_portfolio_value = (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
+                self.median_portfolio_value = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
             else:
-                self.median_portfolio_value = sorted_values[n//2]
+                self.median_portfolio_value = sorted_values[n // 2]
 
         # Activity statistics
         self.active_wallets = len([j for j in successful_jobs if j.is_active])
@@ -274,12 +274,12 @@ class ProcessingResults:
         else:
             return "unknown"
 
-    def get_summary_dict(self) -> Dict[str, Any]:
+    def get_summary_dict(self) -> dict[str, Any]:
         """Get summary as dictionary for reporting."""
         return {
             "input": {
                 "total_wallets": self.total_wallets_input,
-                "batch_size": getattr(self.batch_config, 'batch_size', None) if self.batch_config else None,
+                "batch_size": getattr(self.batch_config, "batch_size", None) if self.batch_config else None,
             },
             "results": {
                 "processed": self.wallets_processed,
@@ -324,8 +324,8 @@ class WalletValidationResult:
 
     address: str
     is_valid: bool
-    normalized_address: Optional[str] = None
-    error_message: Optional[str] = None
+    normalized_address: str | None = None
+    error_message: str | None = None
     checksum_valid: bool = True
 
     @classmethod
@@ -349,11 +349,12 @@ class WalletValidationResult:
 
 # Utility functions for working with wallet types
 
+
 def create_jobs_from_addresses(
-    addresses: List[Dict[str, Union[str, int]]],
+    addresses: list[dict[str, str | int]],
     priority: ProcessingPriority = ProcessingPriority.NORMAL,
-    max_retries: int = 3
-) -> List[WalletProcessingJob]:
+    max_retries: int = 3,
+) -> list[WalletProcessingJob]:
     """Create processing jobs from address list.
 
     Args:
@@ -379,7 +380,7 @@ def create_jobs_from_addresses(
     return jobs
 
 
-def group_jobs_by_priority(jobs: List[WalletProcessingJob]) -> Dict[ProcessingPriority, List[WalletProcessingJob]]:
+def group_jobs_by_priority(jobs: list[WalletProcessingJob]) -> dict[ProcessingPriority, list[WalletProcessingJob]]:
     """Group jobs by priority level.
 
     Args:
@@ -396,7 +397,7 @@ def group_jobs_by_priority(jobs: List[WalletProcessingJob]) -> Dict[ProcessingPr
     return groups
 
 
-def filter_jobs_by_status(jobs: List[WalletProcessingJob], status: WalletStatus) -> List[WalletProcessingJob]:
+def filter_jobs_by_status(jobs: list[WalletProcessingJob], status: WalletStatus) -> list[WalletProcessingJob]:
     """Filter jobs by status.
 
     Args:
@@ -409,7 +410,7 @@ def filter_jobs_by_status(jobs: List[WalletProcessingJob], status: WalletStatus)
     return [job for job in jobs if job.status == status]
 
 
-def get_retry_jobs(jobs: List[WalletProcessingJob]) -> List[WalletProcessingJob]:
+def get_retry_jobs(jobs: list[WalletProcessingJob]) -> list[WalletProcessingJob]:
     """Get jobs that should be retried.
 
     Args:

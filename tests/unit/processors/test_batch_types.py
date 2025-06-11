@@ -1,13 +1,10 @@
 """Tests for batch processing types and utilities."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-
-import pytest
 
 from wallet_tracker.processors.batch_types import (
     BatchConfig,
-    BatchMetadata,
     BatchOperation,
     BatchProgress,
     BatchQueueItem,
@@ -53,7 +50,7 @@ class TestBatchConfig:
             max_concurrent_jobs_per_batch=20,
             timeout_seconds=120,
             min_value_threshold_usd=Decimal("10.0"),
-            retry_failed_jobs=False
+            retry_failed_jobs=False,
         )
 
         assert config.batch_size == 100
@@ -70,7 +67,7 @@ class TestBatchConfig:
             timeout_seconds=30,
             inactive_threshold_days=180,
             max_retries=2,
-            min_value_threshold_usd=Decimal("5.0")
+            min_value_threshold_usd=Decimal("5.0"),
         )
 
         errors = config.validate()
@@ -84,7 +81,7 @@ class TestBatchConfig:
             timeout_seconds=0,  # Invalid
             inactive_threshold_days=0,  # Invalid
             max_retries=-1,  # Invalid
-            min_value_threshold_usd=Decimal("-1.0")  # Invalid
+            min_value_threshold_usd=Decimal("-1.0"),  # Invalid
         )
 
         errors = config.validate()
@@ -102,13 +99,8 @@ class TestBatchProgress:
 
     def test_initial_progress(self):
         """Test initial progress state."""
-        started_at = datetime.now(timezone.utc)
-        progress = BatchProgress(
-            batch_id="test-batch",
-            total_jobs=100,
-            started_at=started_at,
-            total_batches=10
-        )
+        started_at = datetime.now(UTC)
+        progress = BatchProgress(batch_id="test-batch", total_jobs=100, started_at=started_at, total_batches=10)
 
         assert progress.batch_id == "test-batch"
         assert progress.total_jobs == 100
@@ -123,13 +115,9 @@ class TestBatchProgress:
 
     def test_update_progress(self):
         """Test updating progress with job results."""
-        from wallet_tracker.processors.wallet_types import WalletProcessingJob, WalletStatus
+        from wallet_tracker.processors.wallet_types import WalletProcessingJob
 
-        progress = BatchProgress(
-            batch_id="test",
-            total_jobs=10,
-            started_at=datetime.now(timezone.utc)
-        )
+        progress = BatchProgress(batch_id="test", total_jobs=10, started_at=datetime.now(UTC))
 
         # Create and complete a job
         job = WalletProcessingJob("0x123", "Test", 1)
@@ -149,11 +137,7 @@ class TestBatchProgress:
 
     def test_progress_percentage(self):
         """Test progress percentage calculation."""
-        progress = BatchProgress(
-            batch_id="test",
-            total_jobs=100,
-            started_at=datetime.now(timezone.utc)
-        )
+        progress = BatchProgress(batch_id="test", total_jobs=100, started_at=datetime.now(UTC))
 
         assert progress.get_progress_percentage() == 0.0
 
@@ -166,11 +150,7 @@ class TestBatchProgress:
 
     def test_success_rate(self):
         """Test success rate calculation."""
-        progress = BatchProgress(
-            batch_id="test",
-            total_jobs=100,
-            started_at=datetime.now(timezone.utc)
-        )
+        progress = BatchProgress(batch_id="test", total_jobs=100, started_at=datetime.now(UTC))
 
         # No jobs processed yet
         assert progress.get_success_rate() == 0.0
@@ -184,11 +164,7 @@ class TestBatchProgress:
 
     def test_cache_hit_rate(self):
         """Test cache hit rate calculation."""
-        progress = BatchProgress(
-            batch_id="test",
-            total_jobs=100,
-            started_at=datetime.now(timezone.utc)
-        )
+        progress = BatchProgress(batch_id="test", total_jobs=100, started_at=datetime.now(UTC))
 
         # No requests yet
         assert progress.get_cache_hit_rate() == 0.0
@@ -201,13 +177,8 @@ class TestBatchProgress:
 
     def test_get_summary(self):
         """Test getting progress summary."""
-        started_at = datetime.now(timezone.utc)
-        progress = BatchProgress(
-            batch_id="test-batch",
-            total_jobs=100,
-            started_at=started_at,
-            total_batches=5
-        )
+        started_at = datetime.now(UTC)
+        progress = BatchProgress(batch_id="test-batch", total_jobs=100, started_at=started_at, total_batches=5)
 
         progress.current_batch_number = 3
         progress.jobs_completed = 50
@@ -243,10 +214,7 @@ class TestResourceLimits:
     def test_validate_valid_limits(self):
         """Test validation of valid limits."""
         limits = ResourceLimits(
-            max_concurrent_batches=2,
-            max_jobs_per_batch=500,
-            max_memory_mb=1024,
-            max_processing_time_minutes=60
+            max_concurrent_batches=2, max_jobs_per_batch=500, max_memory_mb=1024, max_processing_time_minutes=60
         )
 
         errors = limits.validate()
@@ -258,7 +226,7 @@ class TestResourceLimits:
             max_concurrent_batches=0,  # Invalid
             max_jobs_per_batch=0,  # Invalid
             max_memory_mb=100,  # Invalid (too low)
-            max_processing_time_minutes=0  # Invalid
+            max_processing_time_minutes=0,  # Invalid
         )
 
         errors = limits.validate()
@@ -276,30 +244,24 @@ class TestBatchSchedule:
         """Test immediate schedule type."""
         schedule = BatchSchedule(schedule_type=BatchScheduleType.IMMEDIATE)
 
-        base_time = datetime.now(timezone.utc)
+        base_time = datetime.now(UTC)
         next_time = schedule.get_next_execution_time(base_time)
 
         assert next_time == base_time
 
     def test_scheduled_execution(self):
         """Test scheduled execution."""
-        execution_time = datetime.now(timezone.utc) + timedelta(hours=1)
-        schedule = BatchSchedule(
-            schedule_type=BatchScheduleType.SCHEDULED,
-            execute_at=execution_time
-        )
+        execution_time = datetime.now(UTC) + timedelta(hours=1)
+        schedule = BatchSchedule(schedule_type=BatchScheduleType.SCHEDULED, execute_at=execution_time)
 
         next_time = schedule.get_next_execution_time()
         assert next_time == execution_time
 
     def test_recurring_schedule(self):
         """Test recurring schedule."""
-        schedule = BatchSchedule(
-            schedule_type=BatchScheduleType.RECURRING,
-            interval_minutes=60
-        )
+        schedule = BatchSchedule(schedule_type=BatchScheduleType.RECURRING, interval_minutes=60)
 
-        base_time = datetime.now(timezone.utc)
+        base_time = datetime.now(UTC)
         next_time = schedule.get_next_execution_time(base_time)
 
         expected_time = base_time + timedelta(minutes=60)
@@ -310,13 +272,11 @@ class TestBatchSchedule:
     def test_business_hours_constraint(self):
         """Test business hours constraint."""
         schedule = BatchSchedule(
-            schedule_type=BatchScheduleType.RECURRING,
-            interval_minutes=60,
-            business_hours_only=True
+            schedule_type=BatchScheduleType.RECURRING, interval_minutes=60, business_hours_only=True
         )
 
         # Test with time outside business hours (6 AM)
-        base_time = datetime.now(timezone.utc).replace(hour=6, minute=0, second=0, microsecond=0)
+        base_time = datetime.now(UTC).replace(hour=6, minute=0, second=0, microsecond=0)
         next_time = schedule.get_next_execution_time(base_time)
 
         # Should be adjusted to 9 AM
@@ -325,14 +285,10 @@ class TestBatchSchedule:
 
     def test_weekend_exclusion(self):
         """Test weekend exclusion."""
-        schedule = BatchSchedule(
-            schedule_type=BatchScheduleType.RECURRING,
-            interval_minutes=60,
-            exclude_weekends=True
-        )
+        schedule = BatchSchedule(schedule_type=BatchScheduleType.RECURRING, interval_minutes=60, exclude_weekends=True)
 
         # Find a Saturday (weekday 5)
-        base_time = datetime.now(timezone.utc)
+        base_time = datetime.now(UTC)
         while base_time.weekday() != 5:  # Saturday
             base_time += timedelta(days=1)
 
@@ -347,13 +303,13 @@ class TestBatchQueueItem:
 
     def test_queue_item_creation(self):
         """Test creating a batch queue item."""
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
         item = BatchQueueItem(
             batch_id="test-batch",
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.HIGH,
             state=BatchState.CREATED,
-            created_at=created_at
+            created_at=created_at,
         )
 
         assert item.batch_id == "test-batch"
@@ -370,7 +326,7 @@ class TestBatchQueueItem:
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
             state=BatchState.QUEUED,
-            depends_on=["batch-1", "batch-2"]
+            depends_on=["batch-1", "batch-2"],
         )
 
         # Should not execute if dependencies not completed
@@ -387,14 +343,14 @@ class TestBatchQueueItem:
             batch_id="test",
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
-            state=BatchState.COMPLETED
+            state=BatchState.COMPLETED,
         )
 
         # No execution time if not started
         assert item.get_execution_time() is None
 
         # Set start and end times
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         end_time = start_time + timedelta(minutes=5)
         item.started_at = start_time
         item.completed_at = end_time
@@ -408,14 +364,14 @@ class TestBatchQueueItem:
             batch_id="test",
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
-            state=BatchState.RUNNING
+            state=BatchState.RUNNING,
         )
 
         # No queue time if not queued
         assert item.get_queue_time() is None
 
         # Set queue time
-        queue_time = datetime.now(timezone.utc)
+        queue_time = datetime.now(UTC)
         start_time = queue_time + timedelta(minutes=2)
         item.queued_at = queue_time
         item.started_at = start_time
@@ -431,7 +387,7 @@ class TestBatchQueueItem:
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
             state=BatchState.QUEUED,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC),
         )
         assert not fresh_item.is_expired(max_age_hours=24)
 
@@ -441,7 +397,7 @@ class TestBatchQueueItem:
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
             state=BatchState.QUEUED,
-            created_at=datetime.now(timezone.utc) - timedelta(hours=25)
+            created_at=datetime.now(UTC) - timedelta(hours=25),
         )
         assert old_item.is_expired(max_age_hours=24)
 
@@ -451,19 +407,19 @@ class TestBatchQueueItem:
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.NORMAL,
             state=BatchState.COMPLETED,
-            created_at=datetime.now(timezone.utc) - timedelta(hours=25)
+            created_at=datetime.now(UTC) - timedelta(hours=25),
         )
         assert not completed_item.is_expired(max_age_hours=24)
 
     def test_get_summary(self):
         """Test getting batch summary."""
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
         item = BatchQueueItem(
             batch_id="test-batch",
             batch_type=BatchType.WALLET_ANALYSIS,
             priority=QueuePriority.HIGH,
             state=BatchState.RUNNING,
-            created_at=created_at
+            created_at=created_at,
         )
 
         item.progress_percent = 75.0
@@ -547,7 +503,7 @@ class TestBatchQueueStats:
         ]
 
         # Set completion time for completed item
-        items[2].completed_at = datetime.now(timezone.utc)
+        items[2].completed_at = datetime.now(UTC)
 
         stats = BatchQueueStats()
         stats.update_from_queue(items)
@@ -569,7 +525,7 @@ class TestBatchOperation:
             operation_id="op-1",
             operation_type="wallet_analysis",
             target_data={"addresses": ["0x123"]},
-            parameters={"batch_size": 50}
+            parameters={"batch_size": 50},
         )
 
         assert operation.operation_id == "op-1"
@@ -622,11 +578,7 @@ class TestUtilityFunctions:
             {"address": "0x456", "label": "Wallet 2"},
         ]
 
-        batch = create_wallet_analysis_batch(
-            batch_id="analysis-001",
-            addresses=addresses,
-            priority=QueuePriority.HIGH
-        )
+        batch = create_wallet_analysis_batch(batch_id="analysis-001", addresses=addresses, priority=QueuePriority.HIGH)
 
         assert batch.batch_id == "analysis-001"
         assert batch.batch_type == BatchType.WALLET_ANALYSIS
@@ -643,9 +595,7 @@ class TestUtilityFunctions:
         ]
 
         batch = create_price_update_batch(
-            batch_id="price-001",
-            token_addresses=token_addresses,
-            priority=QueuePriority.URGENT
+            batch_id="price-001", token_addresses=token_addresses, priority=QueuePriority.URGENT
         )
 
         assert batch.batch_id == "price-001"
@@ -656,7 +606,7 @@ class TestUtilityFunctions:
 
     def test_create_scheduled_batch(self):
         """Test creating scheduled batch."""
-        schedule_time = datetime.now(timezone.utc) + timedelta(hours=1)
+        schedule_time = datetime.now(UTC) + timedelta(hours=1)
         input_data = {"test": "data"}
 
         batch = create_scheduled_batch(
@@ -664,7 +614,7 @@ class TestUtilityFunctions:
             batch_type=BatchType.CACHE_REFRESH,
             schedule_time=schedule_time,
             input_data=input_data,
-            priority=QueuePriority.LOW
+            priority=QueuePriority.LOW,
         )
 
         assert batch.batch_id == "scheduled-001"
@@ -678,21 +628,13 @@ class TestUtilityFunctions:
     def test_estimate_batch_resources(self):
         """Test resource estimation for batch operations."""
         # Test small batch
-        small_limits = estimate_batch_resources(
-            wallet_count=10,
-            include_prices=False,
-            enable_cache=False
-        )
+        small_limits = estimate_batch_resources(wallet_count=10, include_prices=False, enable_cache=False)
 
         assert small_limits.max_memory_mb >= 256  # Minimum
         assert small_limits.max_jobs_per_batch == 10
 
         # Test large batch
-        large_limits = estimate_batch_resources(
-            wallet_count=1000,
-            include_prices=True,
-            enable_cache=True
-        )
+        large_limits = estimate_batch_resources(wallet_count=1000, include_prices=True, enable_cache=True)
 
         assert large_limits.max_memory_mb > small_limits.max_memory_mb
         assert large_limits.max_jobs_per_batch == 1000
@@ -700,17 +642,9 @@ class TestUtilityFunctions:
 
     def test_estimate_batch_resources_with_cache(self):
         """Test resource estimation with caching enabled."""
-        limits_with_cache = estimate_batch_resources(
-            wallet_count=100,
-            include_prices=True,
-            enable_cache=True
-        )
+        limits_with_cache = estimate_batch_resources(wallet_count=100, include_prices=True, enable_cache=True)
 
-        limits_without_cache = estimate_batch_resources(
-            wallet_count=100,
-            include_prices=True,
-            enable_cache=False
-        )
+        limits_without_cache = estimate_batch_resources(wallet_count=100, include_prices=True, enable_cache=False)
 
         # With cache should require fewer API calls per minute
         assert limits_with_cache.max_api_calls_per_minute <= limits_without_cache.max_api_calls_per_minute

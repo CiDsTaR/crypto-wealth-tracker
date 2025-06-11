@@ -2,21 +2,18 @@
 
 import asyncio
 import json
-import sys
 from decimal import Decimal
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
 from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
+from rich.table import Table
 
-from .main import get_app, WalletTrackerApp
-from .config import get_config, SettingsError
+from .config import SettingsError
+from .main import get_app
 
 # Rich console for pretty output
 console = Console()
@@ -61,66 +58,67 @@ def print_info(message: str) -> None:
 
 
 @click.group()
-@click.option('--config-file', type=click.Path(exists=True), help='Path to configuration file')
-@click.option('--log-level', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR']),
-              default='INFO', help='Logging level')
-@click.option('--dry-run', is_flag=True, help='Perform dry run without making changes')
+@click.option("--config-file", type=click.Path(exists=True), help="Path to configuration file")
+@click.option(
+    "--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), default="INFO", help="Logging level"
+)
+@click.option("--dry-run", is_flag=True, help="Perform dry run without making changes")
 @click.pass_context
-def cli(ctx: click.Context, config_file: Optional[str], log_level: str, dry_run: bool):
+def cli(ctx: click.Context, config_file: str | None, log_level: str, dry_run: bool):
     """Crypto Wealth Tracker - Calculate on-chain wealth for Ethereum wallets."""
     ctx.ensure_object(dict)
-    ctx.obj['config_file'] = config_file
-    ctx.obj['log_level'] = log_level
-    ctx.obj['dry_run'] = dry_run
+    ctx.obj["config_file"] = config_file
+    ctx.obj["log_level"] = log_level
+    ctx.obj["dry_run"] = dry_run
 
     # Show banner
-    console.print(Panel.fit(
-        "[bold blue]🏦 Crypto Wealth Tracker[/bold blue]\n"
-        "[dim]Calculate on-chain wealth for Ethereum wallets[/dim]",
-        border_style="blue"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold blue]🏦 Crypto Wealth Tracker[/bold blue]\n"
+            "[dim]Calculate on-chain wealth for Ethereum wallets[/dim]",
+            border_style="blue",
+        )
+    )
 
 
 @cli.command()
-@click.option('--spreadsheet-id', required=True, help='Google Sheets spreadsheet ID')
-@click.option('--input-range', default='A:B', help='Input range for wallet addresses (default: A:B)')
-@click.option('--output-range', default='A1', help='Output range for results (default: A1)')
-@click.option('--input-worksheet', help='Input worksheet name (default: first sheet)')
-@click.option('--output-worksheet', help='Output worksheet name (default: input sheet)')
-@click.option('--skip-inactive', is_flag=True, default=True,
-              help='Skip wallets inactive for more than threshold days')
-@click.option('--inactive-days', default=365, type=int,
-              help='Inactive threshold in days (default: 365)')
-@click.option('--batch-size', default=50, type=int,
-              help='Processing batch size (default: 50)')
-@click.option('--max-concurrent', default=10, type=int,
-              help='Max concurrent requests (default: 10)')
-@click.option('--progress/--no-progress', default=True,
-              help='Show progress bar')
-@click.option('--output-format', type=click.Choice(['table', 'json', 'csv']),
-              default='table', help='Output format for results summary')
-@click.option('--save-results', type=click.Path(),
-              help='Save detailed results to file')
+@click.option("--spreadsheet-id", required=True, help="Google Sheets spreadsheet ID")
+@click.option("--input-range", default="A:B", help="Input range for wallet addresses (default: A:B)")
+@click.option("--output-range", default="A1", help="Output range for results (default: A1)")
+@click.option("--input-worksheet", help="Input worksheet name (default: first sheet)")
+@click.option("--output-worksheet", help="Output worksheet name (default: input sheet)")
+@click.option("--skip-inactive", is_flag=True, default=True, help="Skip wallets inactive for more than threshold days")
+@click.option("--inactive-days", default=365, type=int, help="Inactive threshold in days (default: 365)")
+@click.option("--batch-size", default=50, type=int, help="Processing batch size (default: 50)")
+@click.option("--max-concurrent", default=10, type=int, help="Max concurrent requests (default: 10)")
+@click.option("--progress/--no-progress", default=True, help="Show progress bar")
+@click.option(
+    "--output-format",
+    type=click.Choice(["table", "json", "csv"]),
+    default="table",
+    help="Output format for results summary",
+)
+@click.option("--save-results", type=click.Path(), help="Save detailed results to file")
 @click.pass_context
 @handle_async
 async def analyze(
-        ctx: click.Context,
-        spreadsheet_id: str,
-        input_range: str,
-        output_range: str,
-        input_worksheet: Optional[str],
-        output_worksheet: Optional[str],
-        skip_inactive: bool,
-        inactive_days: int,
-        batch_size: int,
-        max_concurrent: int,
-        progress: bool,
-        output_format: str,
-        save_results: Optional[str]
+    ctx: click.Context,
+    spreadsheet_id: str,
+    input_range: str,
+    output_range: str,
+    input_worksheet: str | None,
+    output_worksheet: str | None,
+    skip_inactive: bool,
+    inactive_days: int,
+    batch_size: int,
+    max_concurrent: int,
+    progress: bool,
+    output_format: str,
+    save_results: str | None,
 ):
     """Analyze wallets from Google Sheets."""
 
-    dry_run = ctx.obj.get('dry_run', False)
+    dry_run = ctx.obj.get("dry_run", False)
 
     try:
         # Initialize application
@@ -150,13 +148,12 @@ async def analyze(
         # Process wallets with progress tracking
         if progress:
             with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TaskProgressColumn(),
-                    console=console
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=console,
             ) as progress_bar:
-
                 task = progress_bar.add_task("Processing wallets...", total=100)
 
                 # Create progress callback
@@ -170,11 +167,7 @@ async def analyze(
                     skipped = batch_progress.jobs_skipped
                     total_value = batch_progress.total_value_processed
 
-                    description = (
-                        f"Processing wallets... "
-                        f"✅{completed} ❌{failed} ⏭️{skipped} "
-                        f"💰${total_value:,.0f}"
-                    )
+                    description = f"Processing wallets... ✅{completed} ❌{failed} ⏭️{skipped} 💰${total_value:,.0f}"
                     progress_bar.update(task, description=description)
 
                 # Run analysis
@@ -184,7 +177,7 @@ async def analyze(
                     output_range=output_range if not dry_run else None,
                     input_worksheet=input_worksheet,
                     output_worksheet=output_worksheet if not dry_run else None,
-                    dry_run=dry_run
+                    dry_run=dry_run,
                 )
 
                 progress_bar.update(task, completed=100, description="✅ Analysis completed!")
@@ -198,7 +191,7 @@ async def analyze(
                 output_range=output_range if not dry_run else None,
                 input_worksheet=input_worksheet,
                 output_worksheet=output_worksheet if not dry_run else None,
-                dry_run=dry_run
+                dry_run=dry_run,
             )
 
         # Display results
@@ -220,22 +213,20 @@ async def analyze(
 
 
 @cli.command()
-@click.option('--addresses-file', type=click.Path(exists=True),
-              help='JSON file containing wallet addresses')
-@click.option('--addresses', help='Comma-separated wallet addresses')
-@click.option('--batch-size', default=50, type=int, help='Processing batch size')
-@click.option('--output-format', type=click.Choice(['table', 'json', 'csv']),
-              default='table', help='Output format')
-@click.option('--save-results', type=click.Path(), help='Save results to file')
+@click.option("--addresses-file", type=click.Path(exists=True), help="JSON file containing wallet addresses")
+@click.option("--addresses", help="Comma-separated wallet addresses")
+@click.option("--batch-size", default=50, type=int, help="Processing batch size")
+@click.option("--output-format", type=click.Choice(["table", "json", "csv"]), default="table", help="Output format")
+@click.option("--save-results", type=click.Path(), help="Save results to file")
 @click.pass_context
 @handle_async
 async def batch(
-        ctx: click.Context,
-        addresses_file: Optional[str],
-        addresses: Optional[str],
-        batch_size: int,
-        output_format: str,
-        save_results: Optional[str]
+    ctx: click.Context,
+    addresses_file: str | None,
+    addresses: str | None,
+    batch_size: int,
+    output_format: str,
+    save_results: str | None,
 ):
     """Process a batch of wallet addresses."""
 
@@ -244,36 +235,30 @@ async def batch(
 
     if addresses_file:
         try:
-            with open(addresses_file, 'r') as f:
+            with open(addresses_file) as f:
                 data = json.load(f)
 
             if isinstance(data, list):
                 for i, addr in enumerate(data):
                     if isinstance(addr, str):
-                        wallet_addresses.append({
-                            "address": addr,
-                            "label": f"Wallet {i + 1}",
-                            "row_number": i + 1
-                        })
+                        wallet_addresses.append({"address": addr, "label": f"Wallet {i + 1}", "row_number": i + 1})
                     elif isinstance(addr, dict):
-                        wallet_addresses.append({
-                            "address": addr.get("address", ""),
-                            "label": addr.get("label", f"Wallet {i + 1}"),
-                            "row_number": i + 1
-                        })
+                        wallet_addresses.append(
+                            {
+                                "address": addr.get("address", ""),
+                                "label": addr.get("label", f"Wallet {i + 1}"),
+                                "row_number": i + 1,
+                            }
+                        )
 
         except Exception as e:
             print_error(f"Failed to load addresses file: {e}")
             raise click.ClickException(str(e))
 
     elif addresses:
-        addr_list = [addr.strip() for addr in addresses.split(',')]
+        addr_list = [addr.strip() for addr in addresses.split(",")]
         for i, addr in enumerate(addr_list):
-            wallet_addresses.append({
-                "address": addr,
-                "label": f"Wallet {i + 1}",
-                "row_number": i + 1
-            })
+            wallet_addresses.append({"address": addr, "label": f"Wallet {i + 1}", "row_number": i + 1})
 
     else:
         print_error("Either --addresses-file or --addresses must be provided")
@@ -291,10 +276,7 @@ async def batch(
         print_info(f"Processing {len(wallet_addresses)} wallet addresses")
 
         # Process wallets
-        results = await app.process_wallet_list(
-            addresses=wallet_addresses,
-            dry_run=ctx.obj.get('dry_run', False)
-        )
+        results = await app.process_wallet_list(addresses=wallet_addresses, dry_run=ctx.obj.get("dry_run", False))
 
         # Display results
         await _display_results(results, output_format, save_results)
@@ -310,11 +292,10 @@ async def batch(
 
 
 @cli.command()
-@click.option('--format', 'output_format', type=click.Choice(['table', 'json']),
-              default='table', help='Output format')
-@click.option('--save', type=click.Path(), help='Save health status to file')
+@click.option("--format", "output_format", type=click.Choice(["table", "json"]), default="table", help="Output format")
+@click.option("--save", type=click.Path(), help="Save health status to file")
 @handle_async
-async def health(output_format: str, save: Optional[str]):
+async def health(output_format: str, save: str | None):
     """Check health status of all services."""
 
     try:
@@ -327,7 +308,7 @@ async def health(output_format: str, save: Optional[str]):
 
         health_status = await app.get_health_status()
 
-        if output_format == 'json':
+        if output_format == "json":
             output = json.dumps(health_status, indent=2)
             console.print(output)
         else:
@@ -343,16 +324,16 @@ async def health(output_format: str, save: Optional[str]):
                 status_style = "green" if is_healthy else "red"
 
                 health_table.add_row(
-                    service.replace('_', ' ').title(),
+                    service.replace("_", " ").title(),
                     f"{status_emoji} [{status_style}]{status_text}[/{status_style}]",
-                    "Operational" if is_healthy else "Check configuration"
+                    "Operational" if is_healthy else "Check configuration",
                 )
 
             console.print(health_table)
 
         # Save to file if requested
         if save:
-            with open(save, 'w') as f:
+            with open(save, "w") as f:
                 json.dump(health_status, f, indent=2)
             print_success(f"Health status saved to {save}")
 
@@ -371,12 +352,11 @@ async def health(output_format: str, save: Optional[str]):
 
 
 @cli.command()
-@click.option('--format', 'output_format', type=click.Choice(['table', 'json']),
-              default='table', help='Output format')
-@click.option('--save', type=click.Path(), help='Save metrics to file')
-@click.option('--component', help='Show metrics for specific component only')
+@click.option("--format", "output_format", type=click.Choice(["table", "json"]), default="table", help="Output format")
+@click.option("--save", type=click.Path(), help="Save metrics to file")
+@click.option("--component", help="Show metrics for specific component only")
 @handle_async
-async def metrics(output_format: str, save: Optional[str], component: Optional[str]):
+async def metrics(output_format: str, save: str | None, component: str | None):
     """Show application metrics and statistics."""
 
     try:
@@ -394,34 +374,31 @@ async def metrics(output_format: str, save: Optional[str], component: Optional[s
             if component in all_metrics:
                 metrics_data = {component: all_metrics[component]}
             else:
-                available = ', '.join(all_metrics.keys())
+                available = ", ".join(all_metrics.keys())
                 print_error(f"Component '{component}' not found. Available: {available}")
                 raise click.ClickException("Invalid component")
         else:
             metrics_data = all_metrics
 
-        if output_format == 'json':
+        if output_format == "json":
             output = json.dumps(metrics_data, indent=2, cls=DecimalJSONEncoder)
             console.print(output)
         else:
             # Display as tables
             for comp_name, comp_metrics in metrics_data.items():
                 if isinstance(comp_metrics, dict):
-                    metrics_table = Table(
-                        title=f"{comp_name.replace('_', ' ').title()} Metrics",
-                        box=box.ROUNDED
-                    )
+                    metrics_table = Table(title=f"{comp_name.replace('_', ' ').title()} Metrics", box=box.ROUNDED)
                     metrics_table.add_column("Metric", style="cyan")
                     metrics_table.add_column("Value", style="white")
 
                     for key, value in comp_metrics.items():
                         # Format value nicely
                         if isinstance(value, (int, float)):
-                            if key.endswith('_percent') or key.endswith('_rate'):
+                            if key.endswith("_percent") or key.endswith("_rate"):
                                 formatted_value = f"{value:.1f}%"
-                            elif key.endswith('_seconds') or key.endswith('_time'):
+                            elif key.endswith("_seconds") or key.endswith("_time"):
                                 formatted_value = f"{value:.2f}s"
-                            elif key.endswith('_mb'):
+                            elif key.endswith("_mb"):
                                 formatted_value = f"{value:.1f} MB"
                             elif isinstance(value, int) and value > 1000:
                                 formatted_value = f"{value:,}"
@@ -430,17 +407,14 @@ async def metrics(output_format: str, save: Optional[str], component: Optional[s
                         else:
                             formatted_value = str(value)
 
-                        metrics_table.add_row(
-                            key.replace('_', ' ').title(),
-                            formatted_value
-                        )
+                        metrics_table.add_row(key.replace("_", " ").title(), formatted_value)
 
                     console.print(metrics_table)
                     console.print()
 
         # Save to file if requested
         if save:
-            with open(save, 'w') as f:
+            with open(save, "w") as f:
                 json.dump(metrics_data, f, indent=2, cls=DecimalJSONEncoder)
             print_success(f"Metrics saved to {save}")
 
@@ -455,11 +429,11 @@ async def metrics(output_format: str, save: Optional[str], component: Optional[s
 
 
 @cli.command()
-@click.option('--check-config', is_flag=True, help='Validate configuration file')
-@click.option('--check-credentials', is_flag=True, help='Test API credentials')
-@click.option('--check-sheets', help='Test Google Sheets access with spreadsheet ID')
+@click.option("--check-config", is_flag=True, help="Validate configuration file")
+@click.option("--check-credentials", is_flag=True, help="Test API credentials")
+@click.option("--check-sheets", help="Test Google Sheets access with spreadsheet ID")
 @handle_async
-async def validate(check_config: bool, check_credentials: bool, check_sheets: Optional[str]):
+async def validate(check_config: bool, check_credentials: bool, check_sheets: str | None):
     """Validate configuration and connectivity."""
 
     validation_errors = []
@@ -471,6 +445,7 @@ async def validate(check_config: bool, check_credentials: bool, check_sheets: Op
 
             try:
                 from .config import get_settings
+
                 settings = get_settings()
                 validation_result = settings.validate_config()
 
@@ -517,7 +492,7 @@ async def validate(check_config: bool, check_credentials: bool, check_sheets: Op
                 test_addresses = await app.sheets_client.read_wallet_addresses(
                     spreadsheet_id=check_sheets,
                     range_name="A1:B2",  # Small range for testing
-                    skip_header=False
+                    skip_header=False,
                 )
 
                 print_success(f"Successfully accessed spreadsheet {check_sheets}")
@@ -540,7 +515,7 @@ async def validate(check_config: bool, check_credentials: bool, check_sheets: Op
         raise
     finally:
         try:
-            if 'app' in locals():
+            if "app" in locals():
                 await app.cleanup()
         except:
             pass
@@ -565,15 +540,15 @@ async def interactive():
             pass
 
 
-async def _display_results(results: Dict[str, Any], output_format: str, save_path: Optional[str]) -> None:
+async def _display_results(results: dict[str, Any], output_format: str, save_path: str | None) -> None:
     """Display processing results in the specified format."""
 
-    if output_format == 'json':
+    if output_format == "json":
         # JSON output
         output = json.dumps(results, indent=2, cls=DecimalJSONEncoder)
         console.print(output)
 
-    elif output_format == 'csv':
+    elif output_format == "csv":
         # CSV output (simplified)
         import csv
         import io
@@ -582,19 +557,19 @@ async def _display_results(results: Dict[str, Any], output_format: str, save_pat
         writer = csv.writer(output)
 
         # Write header
-        writer.writerow(['Metric', 'Value'])
+        writer.writerow(["Metric", "Value"])
 
         # Write key metrics
-        if 'results' in results:
-            writer.writerow(['Wallets Processed', results['results'].get('processed', 0)])
-            writer.writerow(['Wallets Skipped', results['results'].get('skipped', 0)])
-            writer.writerow(['Wallets Failed', results['results'].get('failed', 0)])
-            writer.writerow(['Success Rate %', results['results'].get('success_rate', 0)])
+        if "results" in results:
+            writer.writerow(["Wallets Processed", results["results"].get("processed", 0)])
+            writer.writerow(["Wallets Skipped", results["results"].get("skipped", 0)])
+            writer.writerow(["Wallets Failed", results["results"].get("failed", 0)])
+            writer.writerow(["Success Rate %", results["results"].get("success_rate", 0)])
 
-        if 'portfolio_values' in results:
-            writer.writerow(['Total Value USD', results['portfolio_values'].get('total_usd', 0)])
-            writer.writerow(['Average Value USD', results['portfolio_values'].get('average_usd', 0)])
-            writer.writerow(['Median Value USD', results['portfolio_values'].get('median_usd', 0)])
+        if "portfolio_values" in results:
+            writer.writerow(["Total Value USD", results["portfolio_values"].get("total_usd", 0)])
+            writer.writerow(["Average Value USD", results["portfolio_values"].get("average_usd", 0)])
+            writer.writerow(["Median Value USD", results["portfolio_values"].get("median_usd", 0)])
 
         console.print(output.getvalue())
 
@@ -604,17 +579,18 @@ async def _display_results(results: Dict[str, Any], output_format: str, save_pat
 
     # Save to file if requested
     if save_path:
-        with open(save_path, 'w') as f:
-            if save_path.endswith('.json'):
+        with open(save_path, "w") as f:
+            if save_path.endswith(".json"):
                 json.dump(results, f, indent=2, cls=DecimalJSONEncoder)
-            elif save_path.endswith('.csv'):
+            elif save_path.endswith(".csv"):
                 # Save as CSV
                 import csv
+
                 writer = csv.writer(f)
-                writer.writerow(['Metric', 'Value'])
+                writer.writerow(["Metric", "Value"])
 
                 # Flatten results for CSV
-                def flatten_dict(d, prefix=''):
+                def flatten_dict(d, prefix=""):
                     for k, v in d.items():
                         if isinstance(v, dict):
                             yield from flatten_dict(v, f"{prefix}{k}.")
@@ -630,7 +606,7 @@ async def _display_results(results: Dict[str, Any], output_format: str, save_pat
         print_success(f"Results saved to {save_path}")
 
 
-def _display_results_table(results: Dict[str, Any]) -> None:
+def _display_results_table(results: dict[str, Any]) -> None:
     """Display results in table format."""
 
     # Summary table
@@ -639,27 +615,27 @@ def _display_results_table(results: Dict[str, Any]) -> None:
     summary_table.add_column("Value", style="white")
 
     # Input metrics
-    if 'input' in results:
-        summary_table.add_row("Total Wallets Input", str(results['input'].get('total_wallets', 0)))
+    if "input" in results:
+        summary_table.add_row("Total Wallets Input", str(results["input"].get("total_wallets", 0)))
 
     # Results metrics
-    if 'results' in results:
-        res = results['results']
-        summary_table.add_row("✅ Processed", str(res.get('processed', 0)))
-        summary_table.add_row("⏭️ Skipped", str(res.get('skipped', 0)))
-        summary_table.add_row("❌ Failed", str(res.get('failed', 0)))
+    if "results" in results:
+        res = results["results"]
+        summary_table.add_row("✅ Processed", str(res.get("processed", 0)))
+        summary_table.add_row("⏭️ Skipped", str(res.get("skipped", 0)))
+        summary_table.add_row("❌ Failed", str(res.get("failed", 0)))
         summary_table.add_row("📈 Success Rate", f"{res.get('success_rate', 0):.1f}%")
 
     console.print(summary_table)
     console.print()
 
     # Portfolio values table
-    if 'portfolio_values' in results:
+    if "portfolio_values" in results:
         values_table = Table(title="💰 Portfolio Values", box=box.ROUNDED)
         values_table.add_column("Metric", style="cyan")
         values_table.add_column("Amount (USD)", style="green")
 
-        pv = results['portfolio_values']
+        pv = results["portfolio_values"]
         values_table.add_row("Total Value", f"${pv.get('total_usd', 0):,.2f}")
         values_table.add_row("Average Value", f"${pv.get('average_usd', 0):,.2f}")
         values_table.add_row("Median Value", f"${pv.get('median_usd', 0):,.2f}")
@@ -670,56 +646,56 @@ def _display_results_table(results: Dict[str, Any]) -> None:
         console.print()
 
     # Activity table
-    if 'activity' in results:
+    if "activity" in results:
         activity_table = Table(title="🎯 Wallet Activity", box=box.ROUNDED)
         activity_table.add_column("Metric", style="cyan")
         activity_table.add_column("Count", style="white")
         activity_table.add_column("Percentage", style="yellow")
 
-        act = results['activity']
-        total_analyzed = act.get('active_wallets', 0) + act.get('inactive_wallets', 0)
+        act = results["activity"]
+        total_analyzed = act.get("active_wallets", 0) + act.get("inactive_wallets", 0)
 
         if total_analyzed > 0:
-            active_pct = (act.get('active_wallets', 0) / total_analyzed) * 100
-            inactive_pct = (act.get('inactive_wallets', 0) / total_analyzed) * 100
+            active_pct = (act.get("active_wallets", 0) / total_analyzed) * 100
+            inactive_pct = (act.get("inactive_wallets", 0) / total_analyzed) * 100
         else:
             active_pct = inactive_pct = 0
 
-        activity_table.add_row("✅ Active Wallets", str(act.get('active_wallets', 0)), f"{active_pct:.1f}%")
-        activity_table.add_row("❌ Inactive Wallets", str(act.get('inactive_wallets', 0)), f"{inactive_pct:.1f}%")
+        activity_table.add_row("✅ Active Wallets", str(act.get("active_wallets", 0)), f"{active_pct:.1f}%")
+        activity_table.add_row("❌ Inactive Wallets", str(act.get("inactive_wallets", 0)), f"{inactive_pct:.1f}%")
 
         console.print(activity_table)
         console.print()
 
     # Token holders table
-    if 'token_holders' in results:
+    if "token_holders" in results:
         tokens_table = Table(title="🪙 Token Holdings", box=box.ROUNDED)
         tokens_table.add_column("Token", style="cyan")
         tokens_table.add_column("Holders", style="white")
 
-        th = results['token_holders']
-        tokens_table.add_row("ETH", str(th.get('eth', 0)))
-        tokens_table.add_row("USDC", str(th.get('usdc', 0)))
-        tokens_table.add_row("USDT", str(th.get('usdt', 0)))
-        tokens_table.add_row("DAI", str(th.get('dai', 0)))
+        th = results["token_holders"]
+        tokens_table.add_row("ETH", str(th.get("eth", 0)))
+        tokens_table.add_row("USDC", str(th.get("usdc", 0)))
+        tokens_table.add_row("USDT", str(th.get("usdt", 0)))
+        tokens_table.add_row("DAI", str(th.get("dai", 0)))
 
         console.print(tokens_table)
         console.print()
 
     # Performance table
-    if 'performance' in results:
+    if "performance" in results:
         perf_table = Table(title="⚡ Performance Metrics", box=box.ROUNDED)
         perf_table.add_column("Metric", style="cyan")
         perf_table.add_column("Value", style="white")
 
-        perf = results['performance']
+        perf = results["performance"]
         perf_table.add_row("Total Time", f"{perf.get('total_time_seconds', 0):.1f}s")
         perf_table.add_row("Avg Time/Wallet", f"{perf.get('average_time_per_wallet', 0):.2f}s")
         perf_table.add_row("Cache Hit Rate", f"{perf.get('cache_hit_rate', 0):.1f}%")
-        perf_table.add_row("API Calls", str(perf.get('api_calls_total', 0)))
+        perf_table.add_row("API Calls", str(perf.get("api_calls_total", 0)))
 
         console.print(perf_table)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

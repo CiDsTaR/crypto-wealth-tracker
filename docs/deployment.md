@@ -646,19 +646,19 @@ async def collect_metrics():
     """Collect and log application metrics."""
     app = get_app()
     await app.initialize()
-    
+
     try:
         metrics = await app.get_metrics()
-        
+
         # Add timestamp
         metrics['timestamp'] = datetime.now(timezone.utc).isoformat()
-        
+
         # Log to file
         with open('/var/log/wallet-tracker/metrics.json', 'a') as f:
             f.write(json.dumps(metrics) + '\n')
-            
+
         print(f"Metrics collected at {metrics['timestamp']}")
-        
+
     finally:
         await app.cleanup()
 

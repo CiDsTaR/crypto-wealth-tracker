@@ -3,11 +3,12 @@
 import asyncio
 import logging
 import time
-from collections import defaultdict, deque
-from dataclasses import dataclass, field
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,12 @@ class RateLimit:
     """Rate limit configuration."""
 
     requests_per_second: float
-    requests_per_minute: Optional[int] = None
-    requests_per_hour: Optional[int] = None
-    requests_per_day: Optional[int] = None
+    requests_per_minute: int | None = None
+    requests_per_hour: int | None = None
+    requests_per_day: int | None = None
 
     # Burst handling
-    burst_size: Optional[int] = None
+    burst_size: int | None = None
     burst_duration_seconds: float = 1.0
 
     # Backoff configuration
@@ -74,8 +75,8 @@ class RateLimitStatus:
 
     requests_made: int = 0
     requests_remaining: int = 0
-    reset_time: Optional[datetime] = None
-    retry_after_seconds: Optional[float] = None
+    reset_time: datetime | None = None
+    retry_after_seconds: float | None = None
 
     # Performance metrics
     total_requests: int = 0
@@ -335,17 +336,12 @@ class RateLimiterManager:
 
     def __init__(self):
         """Initialize rate limiter manager."""
-        self.limiters: Dict[str, Union[TokenBucketLimiter, SlidingWindowLimiter, AdaptiveLimiter]] = {}
-        self.rate_limits: Dict[str, RateLimit] = {}
-        self.status_cache: Dict[str, RateLimitStatus] = {}
+        self.limiters: dict[str, TokenBucketLimiter | SlidingWindowLimiter | AdaptiveLimiter] = {}
+        self.rate_limits: dict[str, RateLimit] = {}
+        self.status_cache: dict[str, RateLimitStatus] = {}
         self._global_lock = asyncio.Lock()
 
-    def register_limiter(
-            self,
-            name: str,
-            rate_limit: RateLimit,
-            scope: RateLimitScope = RateLimitScope.GLOBAL
-    ) -> None:
+    def register_limiter(self, name: str, rate_limit: RateLimit, scope: RateLimitScope = RateLimitScope.GLOBAL) -> None:
         """Register a new rate limiter.
 
         Args:
@@ -407,7 +403,7 @@ class RateLimiterManager:
             logger.debug(f"Rate limited on '{limiter_name}', waiting {delay:.2f}s")
             await asyncio.sleep(delay)
 
-    def get_status(self, limiter_name: str) -> Optional[RateLimitStatus]:
+    def get_status(self, limiter_name: str) -> RateLimitStatus | None:
         """Get status of a specific limiter.
 
         Args:
@@ -421,23 +417,15 @@ class RateLimiterManager:
 
         return self.limiters[limiter_name].get_status()
 
-    def get_all_status(self) -> Dict[str, RateLimitStatus]:
+    def get_all_status(self) -> dict[str, RateLimitStatus]:
         """Get status of all registered limiters.
 
         Returns:
             Dictionary mapping limiter names to their status
         """
-        return {
-            name: limiter.get_status()
-            for name, limiter in self.limiters.items()
-        }
+        return {name: limiter.get_status() for name, limiter in self.limiters.items()}
 
-    async def report_response(
-            self,
-            limiter_name: str,
-            success: bool,
-            response_time: float
-    ) -> None:
+    async def report_response(self, limiter_name: str, success: bool, response_time: float) -> None:
         """Report API response for adaptive limiters.
 
         Args:
@@ -477,7 +465,7 @@ class RateLimiterManager:
 
             logger.info(f"Removed rate limiter '{limiter_name}'")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get overall rate limiter statistics.
 
         Returns:
@@ -503,7 +491,7 @@ class RateLimiterManager:
 
 
 # Decorator for automatic rate limiting
-def rate_limited(limiter_name: str, requests: int = 1, manager: Optional[RateLimiterManager] = None):
+def rate_limited(limiter_name: str, requests: int = 1, manager: RateLimiterManager | None = None):
     """Decorator to automatically apply rate limiting to functions.
 
     Args:
@@ -534,7 +522,7 @@ def rate_limited(limiter_name: str, requests: int = 1, manager: Optional[RateLim
 
                 return result
 
-            except Exception as e:
+            except Exception:
                 response_time = time.time() - start_time
 
                 # Report failure

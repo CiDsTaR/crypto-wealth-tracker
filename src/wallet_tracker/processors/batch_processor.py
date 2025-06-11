@@ -3,8 +3,9 @@
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from ..clients import (
     CoinGeckoClient,
@@ -12,7 +13,6 @@ from ..clients import (
     GoogleSheetsClient,
     InvalidAddressError,
     WalletPortfolio,
-    create_wallet_result_from_portfolio,
     is_valid_ethereum_address,
     normalize_address,
 )
@@ -21,18 +21,13 @@ from ..utils import CacheManager
 from .batch_types import (
     BatchConfig,
     BatchProgress,
-    QueuePriority,
-    estimate_batch_resources,
 )
 from .wallet_types import (
-    ProcessingPriority,
     ProcessingResults,
     SkipReason,
     WalletProcessingJob,
-    WalletStatus,
     WalletValidationResult,
     create_jobs_from_addresses,
-    filter_jobs_by_status,
     get_retry_jobs,
     group_jobs_by_priority,
 )
@@ -42,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 class BatchProcessorError(Exception):
     """Base exception for batch processor errors."""
+
     pass
 
 
@@ -54,7 +50,7 @@ class BatchProcessor:
         ethereum_client: EthereumClient,
         coingecko_client: CoinGeckoClient,
         cache_manager: CacheManager,
-        sheets_client: Optional[GoogleSheetsClient] = None,
+        sheets_client: GoogleSheetsClient | None = None,
     ):
         """Initialize batch processor.
 
@@ -82,8 +78,8 @@ class BatchProcessor:
         )
 
         # Active processing state
-        self._active_batches: Dict[str, BatchProgress] = {}
-        self._processing_callbacks: List[Callable[[BatchProgress], None]] = []
+        self._active_batches: dict[str, BatchProgress] = {}
+        self._processing_callbacks: list[Callable[[BatchProgress], None]] = []
         self._stop_requested = False
 
     async def process_wallets_from_sheets(
@@ -91,10 +87,10 @@ class BatchProcessor:
         spreadsheet_id: str,
         input_range: str = "A:B",
         output_range: str = "A1",
-        input_worksheet: Optional[str] = None,
-        output_worksheet: Optional[str] = None,
-        config_override: Optional[BatchConfig] = None,
-        progress_callback: Optional[Callable[[BatchProgress], None]] = None,
+        input_worksheet: str | None = None,
+        output_worksheet: str | None = None,
+        config_override: BatchConfig | None = None,
+        progress_callback: Callable[[BatchProgress], None] | None = None,
     ) -> ProcessingResults:
         """Process wallets from Google Sheets input.
 
@@ -167,9 +163,9 @@ class BatchProcessor:
 
     async def process_wallet_list(
         self,
-        addresses: List[Dict[str, Any]],
-        config_override: Optional[BatchConfig] = None,
-        progress_callback: Optional[Callable[[BatchProgress], None]] = None,
+        addresses: list[dict[str, Any]],
+        config_override: BatchConfig | None = None,
+        progress_callback: Callable[[BatchProgress], None] | None = None,
     ) -> ProcessingResults:
         """Process a list of wallet addresses.
 
@@ -197,7 +193,7 @@ class BatchProcessor:
         progress = BatchProgress(
             batch_id=batch_id,
             total_jobs=len(jobs),
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             total_batches=(len(jobs) + batch_config.batch_size - 1) // batch_config.batch_size,
         )
         self._active_batches[batch_id] = progress
@@ -226,7 +222,7 @@ class BatchProcessor:
                 total_wallets_input=len(addresses),
                 batch_config=batch_config,
                 started_at=progress.started_at,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(UTC),
             )
             results.finalize_results(processed_jobs)
 
@@ -247,7 +243,7 @@ class BatchProcessor:
             if progress_callback in self._processing_callbacks:
                 self._processing_callbacks.remove(progress_callback)
 
-    async def _validate_addresses(self, jobs: List[WalletProcessingJob]) -> List[WalletProcessingJob]:
+    async def _validate_addresses(self, jobs: list[WalletProcessingJob]) -> list[WalletProcessingJob]:
         """Validate Ethereum addresses and mark invalid ones."""
         logger.info(f"🔍 Validating {len(jobs)} wallet addresses")
 
@@ -303,7 +299,7 @@ class BatchProcessor:
             logger.debug(f"💱 Cached {len(stablecoin_prices)} stablecoin prices")
 
             # Cache popular tokens if we have a price service
-            if hasattr(self.coingecko_client, 'cache_popular_token_prices'):
+            if hasattr(self.coingecko_client, "cache_popular_token_prices"):
                 cached_count = await self.coingecko_client.cache_popular_token_prices()
                 logger.info(f"📈 Pre-cached {cached_count} popular token prices")
 
@@ -312,10 +308,10 @@ class BatchProcessor:
 
     async def _process_jobs_with_priority(
         self,
-        jobs: List[WalletProcessingJob],
+        jobs: list[WalletProcessingJob],
         config: BatchConfig,
         progress: BatchProgress,
-    ) -> List[WalletProcessingJob]:
+    ) -> list[WalletProcessingJob]:
         """Process jobs grouped by priority."""
         all_processed = []
 
@@ -342,16 +338,16 @@ class BatchProcessor:
 
     async def _process_jobs_batch(
         self,
-        jobs: List[WalletProcessingJob],
+        jobs: list[WalletProcessingJob],
         config: BatchConfig,
         progress: BatchProgress,
-    ) -> List[WalletProcessingJob]:
+    ) -> list[WalletProcessingJob]:
         """Process a batch of jobs with concurrency control."""
         processed_jobs = []
 
         # Split into batches
         for i in range(0, len(jobs), config.batch_size):
-            batch = jobs[i:i + config.batch_size]
+            batch = jobs[i : i + config.batch_size]
             batch_num = (i // config.batch_size) + 1
 
             logger.info(f"📦 Processing batch {batch_num} ({len(batch)} wallets)")
@@ -369,7 +365,7 @@ class BatchProcessor:
             batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Process results
-            for job, result in zip(batch, batch_results):
+            for job, result in zip(batch, batch_results, strict=False):
                 if isinstance(result, Exception):
                     job.mark_failed(str(result))
                     logger.error(f"❌ Job failed: {job.address[:10]}...{job.address[-6:]} - {result}")
@@ -454,7 +450,7 @@ class BatchProcessor:
 
         except InvalidAddressError as e:
             job.mark_failed(str(e), SkipReason.INVALID_ADDRESS)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             job.mark_failed("Request timeout", SkipReason.TIMEOUT)
         except Exception as e:
             error_msg = str(e)
@@ -502,8 +498,8 @@ class BatchProcessor:
             )
             return portfolio
 
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError(f"Timeout getting portfolio for {job.address}")
+        except TimeoutError:
+            raise TimeoutError(f"Timeout getting portfolio for {job.address}")
 
     def _should_skip_wallet(self, portfolio: WalletPortfolio, config: BatchConfig) -> bool:
         """Check if wallet should be skipped based on activity."""
@@ -547,7 +543,7 @@ class BatchProcessor:
         except Exception as e:
             logger.debug(f"Failed to cache result for {job.address}: {e}")
 
-    def get_active_batches(self) -> Dict[str, BatchProgress]:
+    def get_active_batches(self) -> dict[str, BatchProgress]:
         """Get currently active batch operations."""
         return self._active_batches.copy()
 
@@ -561,7 +557,7 @@ class BatchProcessor:
         logger.info("▶️ Resuming batch processing")
         self._stop_requested = False
 
-    async def health_check(self) -> Dict[str, bool]:
+    async def health_check(self) -> dict[str, bool]:
         """Check health of all connected services."""
         health = {}
 
@@ -592,7 +588,7 @@ class BatchProcessor:
 
         return health
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get batch processor statistics."""
         return {
             "active_batches": len(self._active_batches),

@@ -2,11 +2,8 @@
 
 import os
 import tempfile
-import threading
-import time
 from pathlib import Path
-from unittest.mock import patch, mock_open
-from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -54,58 +51,36 @@ class TestEthereumConfig:
 
     def test_rpc_url_with_api_key_injection(self) -> None:
         """Test RPC URL building with API key injection."""
-        config = EthereumConfig(
-            alchemy_api_key="my_api_key",
-            rpc_url="https://eth-mainnet.g.alchemy.com/v2/my_api_key"
-        )
+        config = EthereumConfig(alchemy_api_key="my_api_key", rpc_url="https://eth-mainnet.g.alchemy.com/v2/my_api_key")
         assert "my_api_key" in config.rpc_url
 
     def test_websocket_rpc_url_validation(self) -> None:
         """Test WebSocket RPC URL validation (ws://, wss://)."""
         # Valid WebSocket URLs
-        config_ws = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="ws://localhost:8546"
-        )
+        config_ws = EthereumConfig(alchemy_api_key="test_key", rpc_url="ws://localhost:8546")
         assert config_ws.rpc_url == "ws://localhost:8546"
 
-        config_wss = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="wss://eth-mainnet.g.alchemy.com/v2/test_key"
-        )
+        config_wss = EthereumConfig(alchemy_api_key="test_key", rpc_url="wss://eth-mainnet.g.alchemy.com/v2/test_key")
         assert config_wss.rpc_url.startswith("wss://")
 
     def test_infura_project_id_optional(self) -> None:
         """Test that Infura project ID is optional."""
-        config = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="https://test.com"
-        )
+        config = EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com")
         assert config.infura_project_id is None
 
         config_with_infura = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="https://test.com",
-            infura_project_id="test_infura_id"
+            alchemy_api_key="test_key", rpc_url="https://test.com", infura_project_id="test_infura_id"
         )
         assert config_with_infura.infura_project_id == "test_infura_id"
 
     def test_rate_limit_edge_cases(self) -> None:
         """Test rate limit edge cases."""
         # Test minimum valid value
-        config_min = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="https://test.com",
-            rate_limit=1
-        )
+        config_min = EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com", rate_limit=1)
         assert config_min.rate_limit == 1
 
         # Test maximum valid value
-        config_max = EthereumConfig(
-            alchemy_api_key="test_key",
-            rpc_url="https://test.com",
-            rate_limit=1000
-        )
+        config_max = EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com", rate_limit=1000)
         assert config_max.rate_limit == 1000
 
         # Test invalid values
@@ -113,7 +88,7 @@ class TestEthereumConfig:
             EthereumConfig(
                 alchemy_api_key="test_key",
                 rpc_url="https://test.com",
-                rate_limit=1001  # Too high
+                rate_limit=1001,  # Too high
             )
 
 
@@ -124,18 +99,13 @@ class TestCacheConfig:
         """Test valid cache configuration with all backends."""
         # Test with Redis backend
         config_redis = CacheConfig(
-            backend=CacheBackend.REDIS,
-            redis_url="redis://localhost:6379/0",
-            redis_password="secret"
+            backend=CacheBackend.REDIS, redis_url="redis://localhost:6379/0", redis_password="secret"
         )
         assert config_redis.backend == CacheBackend.REDIS
         assert config_redis.redis_password == "secret"
 
         # Test with File backend
-        config_file = CacheConfig(
-            backend=CacheBackend.FILE,
-            file_cache_dir=Path("test_cache")
-        )
+        config_file = CacheConfig(backend=CacheBackend.FILE, file_cache_dir=Path("test_cache"))
         assert config_file.backend == CacheBackend.FILE
         assert config_file.file_cache_dir == Path("test_cache")
 
@@ -148,7 +118,7 @@ class TestCacheConfig:
         # Valid TTL values
         config = CacheConfig(
             ttl_prices=60,  # Minimum valid
-            ttl_balances=120
+            ttl_balances=120,
         )
         assert config.ttl_prices == 60
         assert config.ttl_balances == 120
@@ -200,11 +170,7 @@ class TestCoinGeckoConfig:
 
     def test_valid_coingecko_config(self) -> None:
         """Test valid CoinGecko configuration."""
-        config = CoinGeckoConfig(
-            api_key="test_api_key",
-            base_url="https://api.coingecko.com/api/v3",
-            rate_limit=50
-        )
+        config = CoinGeckoConfig(api_key="test_api_key", base_url="https://api.coingecko.com/api/v3", rate_limit=50)
         assert config.api_key == "test_api_key"
         assert str(config.base_url) == "https://api.coingecko.com/api/v3"
         assert config.rate_limit == 50
@@ -357,12 +323,7 @@ class TestLoggingConfig:
 
     def test_valid_logging_config(self) -> None:
         """Test valid logging configuration."""
-        config = LoggingConfig(
-            level="DEBUG",
-            file=Path("test.log"),
-            max_size_mb=50,
-            backup_count=3
-        )
+        config = LoggingConfig(level="DEBUG", file=Path("test.log"), max_size_mb=50, backup_count=3)
         assert config.level == "DEBUG"
         assert config.file == Path("test.log")
         assert config.max_size_mb == 50
@@ -453,8 +414,7 @@ class TestGoogleSheetsConfig:
 
         try:
             config = GoogleSheetsConfig(
-                credentials_file=temp_path,
-                scope="https://www.googleapis.com/auth/spreadsheets.readonly"
+                credentials_file=temp_path, scope="https://www.googleapis.com/auth/spreadsheets.readonly"
             )
             assert config.scope == "https://www.googleapis.com/auth/spreadsheets.readonly"
         finally:

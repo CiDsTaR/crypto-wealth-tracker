@@ -2,15 +2,12 @@
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 from .app import Application
-from .config import AppConfig
-from .processors import BatchProcessor, WalletProcessor
-from .monitoring.metrics import MetricsCollector
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +32,9 @@ class StepResult:
         step_name: str,
         success: bool,
         data: Any = None,
-        error: Optional[str] = None,
-        duration: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        error: str | None = None,
+        duration: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.step_name = step_name
         self.success = success
@@ -58,8 +55,8 @@ class WorkflowStep:
         description: str = "",
         required: bool = True,
         retry_count: int = 0,
-        timeout: Optional[float] = None,
-        dependencies: Optional[List[str]] = None
+        timeout: float | None = None,
+        dependencies: list[str] | None = None,
     ):
         self.name = name
         self.func = func
@@ -71,30 +68,24 @@ class WorkflowStep:
 
         # Execution state
         self.executed = False
-        self.result: Optional[StepResult] = None
+        self.result: StepResult | None = None
 
 
 class Workflow:
     """Represents a complete workflow with multiple steps."""
 
-    def __init__(
-        self,
-        name: str,
-        description: str = "",
-        timeout: Optional[float] = None,
-        continue_on_error: bool = False
-    ):
+    def __init__(self, name: str, description: str = "", timeout: float | None = None, continue_on_error: bool = False):
         self.name = name
         self.description = description
         self.timeout = timeout
         self.continue_on_error = continue_on_error
 
-        self.steps: List[WorkflowStep] = []
+        self.steps: list[WorkflowStep] = []
         self.state = WorkflowState.PENDING
-        self.results: List[StepResult] = []
-        self.start_time: Optional[datetime] = None
-        self.end_time: Optional[datetime] = None
-        self.error: Optional[str] = None
+        self.results: list[StepResult] = []
+        self.start_time: datetime | None = None
+        self.end_time: datetime | None = None
+        self.error: str | None = None
 
     def add_step(
         self,
@@ -103,9 +94,9 @@ class Workflow:
         description: str = "",
         required: bool = True,
         retry_count: int = 0,
-        timeout: Optional[float] = None,
-        dependencies: Optional[List[str]] = None
-    ) -> 'Workflow':
+        timeout: float | None = None,
+        dependencies: list[str] | None = None,
+    ) -> "Workflow":
         """Add a step to the workflow."""
         step = WorkflowStep(
             name=name,
@@ -114,21 +105,21 @@ class Workflow:
             required=required,
             retry_count=retry_count,
             timeout=timeout,
-            dependencies=dependencies
+            dependencies=dependencies,
         )
         self.steps.append(step)
         return self
 
-    def get_step(self, name: str) -> Optional[WorkflowStep]:
+    def get_step(self, name: str) -> WorkflowStep | None:
         """Get a step by name."""
         return next((step for step in self.steps if step.name == name), None)
 
-    def get_result(self, step_name: str) -> Optional[StepResult]:
+    def get_result(self, step_name: str) -> StepResult | None:
         """Get result of a specific step."""
         return next((result for result in self.results if result.step_name == step_name), None)
 
     @property
-    def duration(self) -> Optional[float]:
+    def duration(self) -> float | None:
         """Get workflow duration in seconds."""
         if self.start_time and self.end_time:
             return (self.end_time - self.start_time).total_seconds()
@@ -162,15 +153,11 @@ class Orchestrator:
         """
         self.app = app
         self._logger = logging.getLogger(__name__)
-        self._active_workflows: Dict[str, Workflow] = {}
-        self._global_context: Dict[str, Any] = {}
+        self._active_workflows: dict[str, Workflow] = {}
+        self._global_context: dict[str, Any] = {}
 
     def create_workflow(
-        self,
-        name: str,
-        description: str = "",
-        timeout: Optional[float] = None,
-        continue_on_error: bool = False
+        self, name: str, description: str = "", timeout: float | None = None, continue_on_error: bool = False
     ) -> Workflow:
         """Create a new workflow.
 
@@ -183,19 +170,14 @@ class Orchestrator:
         Returns:
             New workflow instance
         """
-        workflow = Workflow(
-            name=name,
-            description=description,
-            timeout=timeout,
-            continue_on_error=continue_on_error
-        )
+        workflow = Workflow(name=name, description=description, timeout=timeout, continue_on_error=continue_on_error)
         return workflow
 
     async def execute_workflow(
         self,
         workflow: Workflow,
-        context: Optional[Dict[str, Any]] = None,
-        progress_callback: Optional[Callable[[Workflow], None]] = None
+        context: dict[str, Any] | None = None,
+        progress_callback: Callable[[Workflow], None] | None = None,
     ) -> Workflow:
         """Execute a workflow.
 
@@ -217,8 +199,8 @@ class Orchestrator:
 
             # Merge context
             execution_context = {**self._global_context, **(context or {})}
-            execution_context['workflow'] = workflow
-            execution_context['orchestrator'] = self
+            execution_context["workflow"] = workflow
+            execution_context["orchestrator"] = self
 
             # Validate dependencies
             self._validate_workflow_dependencies(workflow)
@@ -230,7 +212,7 @@ class Orchestrator:
                 # Execute with timeout
                 await asyncio.wait_for(
                     self._execute_workflow_steps(workflow, execution_context, progress_callback),
-                    timeout=workflow.timeout
+                    timeout=workflow.timeout,
                 )
             else:
                 # Execute without timeout
@@ -242,7 +224,7 @@ class Orchestrator:
 
             self._logger.info(f"✅ Workflow completed: {workflow.name} ({workflow.duration:.2f}s)")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             workflow.state = WorkflowState.FAILED
             workflow.error = "Workflow timeout"
             workflow.end_time = datetime.now(UTC)
@@ -276,10 +258,7 @@ class Orchestrator:
                 raise ValueError(f"Step '{step.name}' has circular dependency on itself")
 
     async def _execute_workflow_steps(
-        self,
-        workflow: Workflow,
-        context: Dict[str, Any],
-        progress_callback: Optional[Callable[[Workflow], None]]
+        self, workflow: Workflow, context: dict[str, Any], progress_callback: Callable[[Workflow], None] | None
     ) -> None:
         """Execute workflow steps in dependency order."""
         executed_steps = set()
@@ -287,7 +266,8 @@ class Orchestrator:
         while len(executed_steps) < len(workflow.steps):
             # Find steps ready to execute
             ready_steps = [
-                step for step in workflow.steps
+                step
+                for step in workflow.steps
                 if not step.executed and all(dep in executed_steps for dep in step.dependencies)
             ]
 
@@ -324,11 +304,7 @@ class Orchestrator:
 
                 except Exception as e:
                     # Create error result
-                    error_result = StepResult(
-                        step_name=step.name,
-                        success=False,
-                        error=str(e)
-                    )
+                    error_result = StepResult(step_name=step.name, success=False, error=str(e))
                     workflow.results.append(error_result)
                     step.result = error_result
                     step.executed = True
@@ -344,11 +320,7 @@ class Orchestrator:
                 except Exception as e:
                     self._logger.warning(f"Progress callback error: {e}")
 
-    async def _execute_step(
-        self,
-        step: WorkflowStep,
-        context: Dict[str, Any]
-    ) -> StepResult:
+    async def _execute_step(self, step: WorkflowStep, context: dict[str, Any]) -> StepResult:
         """Execute a single workflow step."""
         self._logger.debug(f"🔄 Executing step: {step.name}")
 
@@ -358,10 +330,7 @@ class Orchestrator:
             try:
                 if step.timeout:
                     # Execute with timeout
-                    result_data = await asyncio.wait_for(
-                        step.func(context),
-                        timeout=step.timeout
-                    )
+                    result_data = await asyncio.wait_for(step.func(context), timeout=step.timeout)
                 else:
                     # Execute without timeout
                     result_data = await step.func(context)
@@ -374,13 +343,13 @@ class Orchestrator:
                     success=True,
                     data=result_data,
                     duration=duration,
-                    metadata={'attempt': attempt + 1}
+                    metadata={"attempt": attempt + 1},
                 )
 
                 self._logger.debug(f"✅ Step completed: {step.name} ({duration:.2f}s)")
                 return result
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 duration = (datetime.now(UTC) - start_time).total_seconds()
                 error_msg = f"Step timeout after {step.timeout}s"
 
@@ -394,7 +363,7 @@ class Orchestrator:
                         success=False,
                         error=error_msg,
                         duration=duration,
-                        metadata={'attempt': attempt + 1, 'timeout': True}
+                        metadata={"attempt": attempt + 1, "timeout": True},
                     )
 
             except Exception as e:
@@ -411,15 +380,11 @@ class Orchestrator:
                         success=False,
                         error=error_msg,
                         duration=duration,
-                        metadata={'attempt': attempt + 1}
+                        metadata={"attempt": attempt + 1},
                     )
 
         # Should not reach here
-        return StepResult(
-            step_name=step.name,
-            success=False,
-            error="Unknown error"
-        )
+        return StepResult(step_name=step.name, success=False, error="Unknown error")
 
     def set_global_context(self, key: str, value: Any) -> None:
         """Set global context value available to all workflows."""
@@ -429,7 +394,7 @@ class Orchestrator:
         """Get global context value."""
         return self._global_context.get(key, default)
 
-    def get_active_workflows(self) -> Dict[str, Workflow]:
+    def get_active_workflows(self) -> dict[str, Workflow]:
         """Get all currently active workflows."""
         return self._active_workflows.copy()
 
@@ -440,11 +405,11 @@ class Orchestrator:
         spreadsheet_id: str,
         input_range: str = "A:B",
         output_range: str = "A1",
-        input_worksheet: Optional[str] = None,
-        output_worksheet: Optional[str] = None,
+        input_worksheet: str | None = None,
+        output_worksheet: str | None = None,
         batch_size: int = 50,
         skip_inactive: bool = True,
-        dry_run: bool = False
+        dry_run: bool = False,
     ) -> Workflow:
         """Create a complete wallet analysis workflow.
 
@@ -465,7 +430,7 @@ class Orchestrator:
             name="wallet_analysis",
             description=f"Analyze wallets from Google Sheets: {spreadsheet_id}",
             timeout=3600,  # 1 hour timeout
-            continue_on_error=False
+            continue_on_error=False,
         )
 
         # Step 1: Validate inputs
@@ -477,9 +442,7 @@ class Orchestrator:
             try:
                 # Try to read a small sample
                 test_data = await sheets_client.read_wallet_addresses(
-                    spreadsheet_id=spreadsheet_id,
-                    range_name="A1:B2",
-                    skip_header=False
+                    spreadsheet_id=spreadsheet_id, range_name="A1:B2", skip_header=False
                 )
                 return {"spreadsheet_accessible": True, "sample_rows": len(test_data)}
             except Exception as e:
@@ -489,7 +452,7 @@ class Orchestrator:
             name="validate_inputs",
             func=validate_inputs,
             description="Validate spreadsheet access and inputs",
-            required=True
+            required=True,
         )
 
         # Step 2: Health check services
@@ -513,7 +476,7 @@ class Orchestrator:
             func=health_check,
             description="Check health of all services",
             required=False,
-            dependencies=["validate_inputs"]
+            dependencies=["validate_inputs"],
         )
 
         # Step 3: Pre-cache prices
@@ -529,7 +492,7 @@ class Orchestrator:
 
                 return {
                     "eth_price": float(eth_price) if eth_price else None,
-                    "stablecoin_count": len(stablecoin_prices)
+                    "stablecoin_count": len(stablecoin_prices),
                 }
             except Exception as e:
                 self._logger.warning(f"⚠️ Price caching failed: {e}")
@@ -541,7 +504,7 @@ class Orchestrator:
             description="Pre-cache token prices for better performance",
             required=False,
             retry_count=2,
-            dependencies=["health_check"]
+            dependencies=["health_check"],
         )
 
         # Step 4: Read wallet addresses
@@ -550,10 +513,7 @@ class Orchestrator:
 
             sheets_client = self.app.sheets_client
             addresses = await sheets_client.read_wallet_addresses(
-                spreadsheet_id=spreadsheet_id,
-                range_name=input_range,
-                worksheet_name=input_worksheet,
-                skip_header=True
+                spreadsheet_id=spreadsheet_id, range_name=input_range, worksheet_name=input_worksheet, skip_header=True
             )
 
             if not addresses:
@@ -563,14 +523,9 @@ class Orchestrator:
 
             return {
                 "addresses": [
-                    {
-                        "address": addr.address,
-                        "label": addr.label,
-                        "row_number": addr.row_number
-                    }
-                    for addr in addresses
+                    {"address": addr.address, "label": addr.label, "row_number": addr.row_number} for addr in addresses
                 ],
-                "count": len(addresses)
+                "count": len(addresses),
             }
 
         workflow.add_step(
@@ -579,7 +534,7 @@ class Orchestrator:
             description="Read wallet addresses from Google Sheets",
             required=True,
             retry_count=2,
-            dependencies=["validate_inputs"]
+            dependencies=["validate_inputs"],
         )
 
         # Step 5: Process wallets
@@ -589,11 +544,9 @@ class Orchestrator:
             addresses = context["step_read_addresses_result"]["addresses"]
 
             # Process using batch processor
-            results = await self.app.batch_processor.process_wallet_list(
-                addresses=addresses
-            )
+            results = await self.app.batch_processor.process_wallet_list(addresses=addresses)
 
-            return results.get_summary_dict() if hasattr(results, 'get_summary_dict') else results
+            return results.get_summary_dict() if hasattr(results, "get_summary_dict") else results
 
         workflow.add_step(
             name="process_wallets",
@@ -601,7 +554,7 @@ class Orchestrator:
             description="Process wallet addresses and calculate balances",
             required=True,
             timeout=3000,  # 50 minutes
-            dependencies=["read_addresses", "precache_prices"]
+            dependencies=["read_addresses", "precache_prices"],
         )
 
         # Step 6: Write results (if not dry run)
@@ -622,7 +575,7 @@ class Orchestrator:
             description="Write analysis results back to Google Sheets",
             required=not dry_run,
             retry_count=2,
-            dependencies=["process_wallets"]
+            dependencies=["process_wallets"],
         )
 
         # Step 7: Generate summary
@@ -637,7 +590,7 @@ class Orchestrator:
                 "execution_time": workflow.duration,
                 "dry_run": dry_run,
                 "processing_results": processing_results,
-                "timestamp": datetime.now(UTC).isoformat()
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             return summary
@@ -647,16 +600,13 @@ class Orchestrator:
             func=generate_summary,
             description="Generate analysis summary report",
             required=False,
-            dependencies=["process_wallets", "write_results"]
+            dependencies=["process_wallets", "write_results"],
         )
 
         return workflow
 
     def create_price_update_workflow(
-        self,
-        token_addresses: Optional[List[str]] = None,
-        update_popular: bool = True,
-        cache_duration: int = 3600
+        self, token_addresses: list[str] | None = None, update_popular: bool = True, cache_duration: int = 3600
     ) -> Workflow:
         """Create a price update workflow.
 
@@ -672,7 +622,7 @@ class Orchestrator:
             name="price_update",
             description="Update token price cache",
             timeout=600,  # 10 minutes
-            continue_on_error=True
+            continue_on_error=True,
         )
 
         # Step 1: Update ETH price
@@ -682,10 +632,10 @@ class Orchestrator:
             eth_price = await self.app.coingecko_client.get_eth_price()
 
             if self.app.cache_manager:
-                await self.app.cache_manager.set_price("ethereum", {
-                    "usd": float(eth_price) if eth_price else None,
-                    "last_updated": datetime.now(UTC).isoformat()
-                })
+                await self.app.cache_manager.set_price(
+                    "ethereum",
+                    {"usd": float(eth_price) if eth_price else None, "last_updated": datetime.now(UTC).isoformat()},
+                )
 
             return {"eth_price": float(eth_price) if eth_price else None}
 
@@ -694,7 +644,7 @@ class Orchestrator:
             func=update_eth_price,
             description="Update ETH price in cache",
             required=True,
-            retry_count=3
+            retry_count=3,
         )
 
         # Step 2: Update stablecoin prices
@@ -705,10 +655,9 @@ class Orchestrator:
 
             if self.app.cache_manager:
                 for symbol, price in stablecoin_prices.items():
-                    await self.app.cache_manager.set_price(symbol.lower(), {
-                        "usd": float(price),
-                        "last_updated": datetime.now(UTC).isoformat()
-                    })
+                    await self.app.cache_manager.set_price(
+                        symbol.lower(), {"usd": float(price), "last_updated": datetime.now(UTC).isoformat()}
+                    )
 
             return {"stablecoin_prices": {k: float(v) for k, v in stablecoin_prices.items()}}
 
@@ -718,7 +667,7 @@ class Orchestrator:
             description="Update stablecoin prices in cache",
             required=False,
             retry_count=2,
-            dependencies=["update_eth_price"]
+            dependencies=["update_eth_price"],
         )
 
         # Step 3: Update popular tokens (if requested)
@@ -735,12 +684,15 @@ class Orchestrator:
             if self.app.cache_manager:
                 for token in top_tokens:
                     if token.current_price_usd:
-                        await self.app.cache_manager.set_price(token.token_id, {
-                            "usd": float(token.current_price_usd),
-                            "symbol": token.symbol,
-                            "name": token.name,
-                            "last_updated": datetime.now(UTC).isoformat()
-                        })
+                        await self.app.cache_manager.set_price(
+                            token.token_id,
+                            {
+                                "usd": float(token.current_price_usd),
+                                "symbol": token.symbol,
+                                "name": token.name,
+                                "last_updated": datetime.now(UTC).isoformat(),
+                            },
+                        )
                         cached_count += 1
 
             return {"tokens_cached": cached_count}
@@ -752,7 +704,7 @@ class Orchestrator:
             required=False,
             timeout=300,  # 5 minutes
             retry_count=1,
-            dependencies=["update_stablecoin_prices"]
+            dependencies=["update_stablecoin_prices"],
         )
 
         # Step 4: Update specific tokens (if provided)
@@ -763,20 +715,22 @@ class Orchestrator:
             self._logger.info(f"🎯 Updating {len(token_addresses)} specific token prices")
 
             token_prices = await self.app.coingecko_client.get_token_prices_by_contracts(
-                contract_addresses=token_addresses,
-                include_market_data=False
+                contract_addresses=token_addresses, include_market_data=False
             )
 
             cached_count = 0
             if self.app.cache_manager:
                 for addr, price_data in token_prices.items():
                     if price_data.current_price_usd:
-                        await self.app.cache_manager.set_price(addr, {
-                            "usd": float(price_data.current_price_usd),
-                            "symbol": price_data.symbol,
-                            "contract_address": addr,
-                            "last_updated": datetime.now(UTC).isoformat()
-                        })
+                        await self.app.cache_manager.set_price(
+                            addr,
+                            {
+                                "usd": float(price_data.current_price_usd),
+                                "symbol": price_data.symbol,
+                                "contract_address": addr,
+                                "last_updated": datetime.now(UTC).isoformat(),
+                            },
+                        )
                         cached_count += 1
 
             return {"specific_tokens_cached": cached_count}
@@ -787,7 +741,7 @@ class Orchestrator:
             description="Update specific token prices",
             required=False,
             retry_count=2,
-            dependencies=["update_popular_tokens"]
+            dependencies=["update_popular_tokens"],
         )
 
         return workflow
@@ -802,7 +756,7 @@ class Orchestrator:
             name="maintenance",
             description="System maintenance and cleanup",
             timeout=1800,  # 30 minutes
-            continue_on_error=True
+            continue_on_error=True,
         )
 
         # Step 1: Cache cleanup
@@ -820,17 +774,10 @@ class Orchestrator:
 
             stats_after = await self.app.cache_manager.get_stats()
 
-            return {
-                "stats_before": stats_before,
-                "stats_after": stats_after,
-                "cleanup_performed": True
-            }
+            return {"stats_before": stats_before, "stats_after": stats_after, "cleanup_performed": True}
 
         workflow.add_step(
-            name="cache_cleanup",
-            func=cache_cleanup,
-            description="Clean up expired cache entries",
-            required=False
+            name="cache_cleanup", func=cache_cleanup, description="Clean up expired cache entries", required=False
         )
 
         # Step 2: Health check all services
@@ -845,7 +792,7 @@ class Orchestrator:
             return {
                 "health_status": health_status,
                 "metrics_snapshot": metrics,
-                "timestamp": datetime.now(UTC).isoformat()
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         workflow.add_step(
@@ -853,7 +800,7 @@ class Orchestrator:
             func=comprehensive_health_check,
             description="Comprehensive health check of all services",
             required=False,
-            dependencies=["cache_cleanup"]
+            dependencies=["cache_cleanup"],
         )
 
         # Step 3: Update configuration (reload from environment)
@@ -862,6 +809,7 @@ class Orchestrator:
 
             try:
                 from .config import get_settings
+
                 settings = get_settings()
                 settings.reload_config()
 
@@ -874,7 +822,7 @@ class Orchestrator:
             func=refresh_configuration,
             description="Refresh application configuration",
             required=False,
-            dependencies=["comprehensive_health_check"]
+            dependencies=["comprehensive_health_check"],
         )
 
         return workflow
@@ -889,9 +837,7 @@ class Orchestrator:
         return await self.execute_workflow(workflow)
 
     async def execute_price_update(
-        self,
-        token_addresses: Optional[List[str]] = None,
-        update_popular: bool = True
+        self, token_addresses: list[str] | None = None, update_popular: bool = True
     ) -> Workflow:
         """Execute price update workflow.
 
@@ -902,13 +848,10 @@ class Orchestrator:
         Returns:
             Completed price update workflow
         """
-        workflow = self.create_price_update_workflow(
-            token_addresses=token_addresses,
-            update_popular=update_popular
-        )
+        workflow = self.create_price_update_workflow(token_addresses=token_addresses, update_popular=update_popular)
         return await self.execute_workflow(workflow)
 
-    def get_workflow_stats(self) -> Dict[str, Any]:
+    def get_workflow_stats(self) -> dict[str, Any]:
         """Get statistics about workflow execution.
 
         Returns:
@@ -920,5 +863,5 @@ class Orchestrator:
         return {
             "active_workflows": active_count,
             "active_workflow_names": list(self._active_workflows.keys()),
-            "global_context_keys": list(self._global_context.keys())
+            "global_context_keys": list(self._global_context.keys()),
         }

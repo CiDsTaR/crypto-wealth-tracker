@@ -4,10 +4,11 @@ import asyncio
 import logging
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +57,9 @@ class BackoffConfig:
     success_threshold: int = 3  # Reset after N consecutive successes
 
     # Custom function for custom strategy
-    custom_function: Optional[Callable[[int, float], float]] = None
+    custom_function: Callable[[int, float], float] | None = None
 
-    def calculate_delay(self, attempt: int, base_delay: Optional[float] = None) -> float:
+    def calculate_delay(self, attempt: int, base_delay: float | None = None) -> float:
         """Calculate delay for given attempt number.
 
         Args:
@@ -80,20 +81,20 @@ class BackoffConfig:
             calculated_delay = delay + (attempt * self.additive_increase)
 
         elif self.strategy == BackoffStrategy.EXPONENTIAL:
-            calculated_delay = delay * (self.multiplier ** attempt)
+            calculated_delay = delay * (self.multiplier**attempt)
 
         elif self.strategy == BackoffStrategy.FIBONACCI:
             calculated_delay = delay * self._fibonacci(attempt + 1)
 
         elif self.strategy == BackoffStrategy.POLYNOMIAL:
-            calculated_delay = delay * (attempt ** self.polynomial_degree)
+            calculated_delay = delay * (attempt**self.polynomial_degree)
 
         elif self.strategy == BackoffStrategy.CUSTOM and self.custom_function:
             calculated_delay = self.custom_function(attempt, delay)
 
         else:
             # Default to exponential
-            calculated_delay = delay * (self.multiplier ** attempt)
+            calculated_delay = delay * (self.multiplier**attempt)
 
         # Apply jitter
         if self.jitter and calculated_delay > 0:
@@ -133,14 +134,14 @@ class ThrottleConfig:
     adaptation_threshold: float = 0.9  # Success rate threshold
 
     # Time-based throttling
-    peak_hours: List[int] = field(default_factory=lambda: [9, 10, 11, 14, 15, 16])  # Business hours
+    peak_hours: list[int] = field(default_factory=lambda: [9, 10, 11, 14, 15, 16])  # Business hours
     peak_multiplier: float = 0.5  # Reduce rate during peak hours
 
     # Burst then throttle
     burst_window_seconds: float = 60.0
     throttle_after_burst: bool = True
 
-    def get_delay_for_time(self, current_time: Optional[datetime] = None) -> float:
+    def get_delay_for_time(self, current_time: datetime | None = None) -> float:
         """Get delay based on current time and mode.
 
         Args:
@@ -174,8 +175,8 @@ class ThrottleState:
     failure_count: int = 0
 
     # Timing
-    last_request_time: Optional[float] = None
-    window_start_time: Optional[float] = None
+    last_request_time: float | None = None
+    window_start_time: float | None = None
 
     # Adaptive state
     current_delay: float = 0.1
@@ -184,7 +185,7 @@ class ThrottleState:
 
     # Burst tracking
     burst_requests: int = 0
-    burst_start_time: Optional[float] = None
+    burst_start_time: float | None = None
 
     def update_success(self) -> None:
         """Update state for successful request."""
@@ -217,12 +218,7 @@ class ThrottleState:
 class Throttle:
     """Advanced throttling system with multiple strategies."""
 
-    def __init__(
-            self,
-            config: ThrottleConfig,
-            backoff_config: Optional[BackoffConfig] = None,
-            name: str = "throttle"
-    ):
+    def __init__(self, config: ThrottleConfig, backoff_config: BackoffConfig | None = None, name: str = "throttle"):
         """Initialize throttle.
 
         Args:
@@ -312,14 +308,12 @@ class Throttle:
         if success_rate < self.config.adaptation_threshold:
             # Increase delay if success rate is low
             self.state.current_delay = min(
-                self.config.max_delay,
-                self.state.current_delay * self.config.adaptation_factor
+                self.config.max_delay, self.state.current_delay * self.config.adaptation_factor
             )
         else:
             # Decrease delay if success rate is good
             self.state.current_delay = max(
-                self.config.min_delay,
-                self.state.current_delay / self.config.adaptation_factor
+                self.config.min_delay, self.state.current_delay / self.config.adaptation_factor
             )
 
         if self.state.last_request_time is None:
@@ -405,7 +399,7 @@ class Throttle:
                     f"(attempt {self.current_attempt}/{self.backoff_config.max_retries})"
                 )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get throttle statistics."""
         return {
             "name": self.name,
@@ -436,15 +430,10 @@ class ThrottleManager:
 
     def __init__(self):
         """Initialize throttle manager."""
-        self.throttles: Dict[str, Throttle] = {}
+        self.throttles: dict[str, Throttle] = {}
         self._global_lock = asyncio.Lock()
 
-    def register_throttle(
-            self,
-            name: str,
-            config: ThrottleConfig,
-            backoff_config: Optional[BackoffConfig] = None
-    ) -> None:
+    def register_throttle(self, name: str, config: ThrottleConfig, backoff_config: BackoffConfig | None = None) -> None:
         """Register a new throttle.
 
         Args:
@@ -504,7 +493,7 @@ class ThrottleManager:
         if throttle_name in self.throttles:
             await self.throttles[throttle_name].report_failure(trigger_backoff)
 
-    def get_throttle(self, name: str) -> Optional[Throttle]:
+    def get_throttle(self, name: str) -> Throttle | None:
         """Get a specific throttle.
 
         Args:
@@ -515,16 +504,13 @@ class ThrottleManager:
         """
         return self.throttles.get(name)
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> dict[str, dict[str, Any]]:
         """Get statistics for all throttles.
 
         Returns:
             Dictionary mapping throttle names to their stats
         """
-        return {
-            name: throttle.get_stats()
-            for name, throttle in self.throttles.items()
-        }
+        return {name: throttle.get_stats() for name, throttle in self.throttles.items()}
 
     def reset_throttle(self, throttle_name: str) -> None:
         """Reset a specific throttle.
@@ -554,7 +540,7 @@ class ThrottleManager:
 
 
 # Decorator for automatic throttling
-def throttled(throttle_name: str, manager: Optional[ThrottleManager] = None):
+def throttled(throttle_name: str, manager: ThrottleManager | None = None):
     """Decorator to automatically apply throttling to functions.
 
     Args:
@@ -581,7 +567,7 @@ def throttled(throttle_name: str, manager: Optional[ThrottleManager] = None):
 
                 return result
 
-            except Exception as e:
+            except Exception:
                 # Report failure
                 await manager.report_failure(throttle_name)
                 raise
@@ -686,10 +672,10 @@ class CombinedThrottleAndRateLimit:
     """Combines throttling and rate limiting for comprehensive control."""
 
     def __init__(
-            self,
-            throttle: Throttle,
-            rate_limiter: Any,  # Would import from rate_limiter.py
-            name: str = "combined"
+        self,
+        throttle: Throttle,
+        rate_limiter: Any,  # Would import from rate_limiter.py
+        name: str = "combined",
     ):
         """Initialize combined throttle and rate limiter.
 
@@ -735,10 +721,10 @@ class CombinedThrottleAndRateLimit:
         await self.throttle.report_failure(trigger_backoff)
         # Rate limiter typically doesn't need failure reporting
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get combined statistics."""
         return {
             "name": self.name,
             "throttle_stats": self.throttle.get_stats(),
-            "rate_limiter_stats": getattr(self.rate_limiter, 'get_status', lambda: {})(),
+            "rate_limiter_stats": getattr(self.rate_limiter, "get_status", lambda: {})(),
         }

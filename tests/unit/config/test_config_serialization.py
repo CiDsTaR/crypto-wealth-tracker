@@ -2,9 +2,8 @@
 
 import json
 import tempfile
-from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -31,18 +30,9 @@ class TestConfigSerialization:
             environment=Environment.DEVELOPMENT,
             debug=True,
             dry_run=False,
-            ethereum=EthereumConfig(
-                alchemy_api_key="test_key",
-                rpc_url="https://test.com",
-                rate_limit=100
-            ),
-            coingecko=CoinGeckoConfig(
-                api_key="cg_key",
-                rate_limit=50
-            ),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com", rate_limit=100),
+            coingecko=CoinGeckoConfig(api_key="cg_key", rate_limit=50),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
         )
 
         config_dict = config.model_dump()
@@ -71,16 +61,12 @@ class TestConfigSerialization:
                 "alchemy_api_key": "prod_key",
                 "infura_project_id": "infura_id",
                 "rpc_url": "https://prod.com",
-                "rate_limit": 200
+                "rate_limit": 200,
             },
-            "coingecko": {
-                "api_key": "cg_prod_key",
-                "base_url": "https://api.coingecko.com/api/v3",
-                "rate_limit": 100
-            },
+            "coingecko": {"api_key": "cg_prod_key", "base_url": "https://api.coingecko.com/api/v3", "rate_limit": 100},
             "google_sheets": {
                 "credentials_file": str(Path(__file__)),
-                "scope": "https://www.googleapis.com/auth/spreadsheets"
+                "scope": "https://www.googleapis.com/auth/spreadsheets",
             },
             "cache": {
                 "backend": "redis",
@@ -89,7 +75,7 @@ class TestConfigSerialization:
                 "file_cache_dir": "cache",
                 "ttl_prices": 7200,
                 "ttl_balances": 3600,
-                "max_size_mb": 1000
+                "max_size_mb": 1000,
             },
             "processing": {
                 "batch_size": 100,
@@ -97,14 +83,9 @@ class TestConfigSerialization:
                 "request_delay": 0.05,
                 "inactive_wallet_threshold_days": 180,
                 "retry_attempts": 5,
-                "retry_delay": 2.0
+                "retry_delay": 2.0,
             },
-            "logging": {
-                "level": "WARNING",
-                "file": "prod.log",
-                "max_size_mb": 200,
-                "backup_count": 10
-            }
+            "logging": {"level": "WARNING", "file": "prod.log", "max_size_mb": 200, "backup_count": 10},
         }
 
         config = AppConfig(**config_data)
@@ -140,14 +121,9 @@ class TestConfigSerialization:
         """Test JSON serialization compatibility."""
         config = AppConfig(
             environment=Environment.STAGING,
-            ethereum=EthereumConfig(
-                alchemy_api_key="test_key",
-                rpc_url="https://test.com"
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com"),
             coingecko=CoinGeckoConfig(),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
         )
 
         # Should be JSON serializable
@@ -176,19 +152,10 @@ class TestConfigSerialization:
         """Test that sensitive data can be masked in serialization."""
         config = AppConfig(
             environment=Environment.DEVELOPMENT,
-            ethereum=EthereumConfig(
-                alchemy_api_key="super_secret_key",
-                rpc_url="https://test.com"
-            ),
-            coingecko=CoinGeckoConfig(
-                api_key="secret_coingecko_key"
-            ),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
-            cache=CacheConfig(
-                redis_password="secret_redis_password"
-            )
+            ethereum=EthereumConfig(alchemy_api_key="super_secret_key", rpc_url="https://test.com"),
+            coingecko=CoinGeckoConfig(api_key="secret_coingecko_key"),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
+            cache=CacheConfig(redis_password="secret_redis_password"),
         )
 
         # Regular dump includes sensitive data
@@ -198,15 +165,20 @@ class TestConfigSerialization:
         assert config_dict["cache"]["redis_password"] == "secret_redis_password"
 
         # Utility function to mask sensitive fields
-        def mask_sensitive_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+        def mask_sensitive_fields(data: dict[str, Any]) -> dict[str, Any]:
             """Recursively mask sensitive fields in config dict."""
             if not isinstance(data, dict):
                 return data
 
             masked = {}
             sensitive_fields = {
-                "api_key", "alchemy_api_key", "infura_project_id",
-                "redis_password", "private_key", "token", "secret"
+                "api_key",
+                "alchemy_api_key",
+                "infura_project_id",
+                "redis_password",
+                "private_key",
+                "token",
+                "secret",
             }
 
             for key, value in data.items():
@@ -240,35 +212,21 @@ class TestConfigSerialization:
                 alchemy_api_key="original_key",
                 infura_project_id="infura_123",
                 rpc_url="https://original.com",
-                rate_limit=150
+                rate_limit=150,
             ),
-            coingecko=CoinGeckoConfig(
-                api_key="cg_original",
-                rate_limit=75
-            ),
+            coingecko=CoinGeckoConfig(api_key="cg_original", rate_limit=75),
             google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__),
-                scope="https://www.googleapis.com/auth/spreadsheets.readonly"
+                credentials_file=Path(__file__), scope="https://www.googleapis.com/auth/spreadsheets.readonly"
             ),
             cache=CacheConfig(
                 backend=CacheBackend.HYBRID,
                 redis_url="redis://original:6379/1",
                 redis_password="original_pass",
                 ttl_prices=5400,
-                ttl_balances=2700
+                ttl_balances=2700,
             ),
-            processing=ProcessingConfig(
-                batch_size=75,
-                max_concurrent_requests=15,
-                request_delay=0.2,
-                retry_attempts=4
-            ),
-            logging=LoggingConfig(
-                level="ERROR",
-                file=Path("original.log"),
-                max_size_mb=150,
-                backup_count=7
-            )
+            processing=ProcessingConfig(batch_size=75, max_concurrent_requests=15, request_delay=0.2, retry_attempts=4),
+            logging=LoggingConfig(level="ERROR", file=Path("original.log"), max_size_mb=150, backup_count=7),
         )
 
         # Serialize to dict
@@ -315,10 +273,7 @@ class TestConfigSerialization:
         """Test serialization of individual configuration components."""
         # Test EthereumConfig serialization
         eth_config = EthereumConfig(
-            alchemy_api_key="eth_key",
-            infura_project_id="infura_123",
-            rpc_url="https://ethereum.com",
-            rate_limit=250
+            alchemy_api_key="eth_key", infura_project_id="infura_123", rpc_url="https://ethereum.com", rate_limit=250
         )
 
         eth_dict = eth_config.model_dump()
@@ -333,10 +288,7 @@ class TestConfigSerialization:
 
         # Test CacheConfig serialization
         cache_config = CacheConfig(
-            backend=CacheBackend.FILE,
-            file_cache_dir=Path("/custom/cache"),
-            ttl_prices=9000,
-            max_size_mb=750
+            backend=CacheBackend.FILE, file_cache_dir=Path("/custom/cache"), ttl_prices=9000, max_size_mb=750
         )
 
         cache_dict = cache_config.model_dump()
@@ -354,14 +306,9 @@ class TestConfigSerialization:
         # Create config with minimal required fields
         config = AppConfig(
             environment=Environment.DEVELOPMENT,
-            ethereum=EthereumConfig(
-                alchemy_api_key="min_key",
-                rpc_url="https://min.com"
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="min_key", rpc_url="https://min.com"),
             coingecko=CoinGeckoConfig(),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            )
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
         )
 
         config_dict = config.model_dump()
@@ -379,21 +326,10 @@ class TestConfigSerialization:
         """Test that types are preserved during serialization."""
         config = AppConfig(
             environment=Environment.STAGING,
-            ethereum=EthereumConfig(
-                alchemy_api_key="type_test",
-                rpc_url="https://types.com",
-                rate_limit=300
-            ),
-            coingecko=CoinGeckoConfig(
-                rate_limit=60
-            ),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
-            processing=ProcessingConfig(
-                request_delay=0.15,
-                retry_delay=1.5
-            )
+            ethereum=EthereumConfig(alchemy_api_key="type_test", rpc_url="https://types.com", rate_limit=300),
+            coingecko=CoinGeckoConfig(rate_limit=60),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
+            processing=ProcessingConfig(request_delay=0.15, retry_delay=1.5),
         )
 
         config_dict = config.model_dump()
@@ -421,17 +357,15 @@ class TestConfigSerialization:
             ethereum=EthereumConfig(
                 alchemy_api_key="edge_test",
                 rpc_url="https://edge.com",
-                infura_project_id=None  # Explicit None
+                infura_project_id=None,  # Explicit None
             ),
             coingecko=CoinGeckoConfig(
                 api_key=None  # Explicit None
             ),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
             logging=LoggingConfig(
                 file=None  # None log file
-            )
+            ),
         )
 
         config_dict = config.model_dump()
@@ -452,14 +386,9 @@ class TestConfigSerialization:
         # Create valid config dict
         valid_dict = {
             "environment": "development",
-            "ethereum": {
-                "alchemy_api_key": "test_key",
-                "rpc_url": "https://test.com"
-            },
+            "ethereum": {"alchemy_api_key": "test_key", "rpc_url": "https://test.com"},
             "coingecko": {},
-            "google_sheets": {
-                "credentials_file": str(Path(__file__))
-            }
+            "google_sheets": {"credentials_file": str(Path(__file__))},
         }
 
         # This should work
@@ -484,24 +413,17 @@ class TestConfigSerialization:
                 alchemy_api_key="export_key",
                 infura_project_id="export_infura",
                 rpc_url="https://export.com",
-                rate_limit=500
+                rate_limit=500,
             ),
-            coingecko=CoinGeckoConfig(
-                api_key="export_cg_key",
-                rate_limit=150
-            ),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            ),
+            coingecko=CoinGeckoConfig(api_key="export_cg_key", rate_limit=150),
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
             cache=CacheConfig(
-                backend=CacheBackend.REDIS,
-                redis_url="redis://export:6379/2",
-                redis_password="export_pass"
-            )
+                backend=CacheBackend.REDIS, redis_url="redis://export:6379/2", redis_password="export_pass"
+            ),
         )
 
         # Export to JSON file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config_dict = config.model_dump()
 
             # Custom encoder for Path objects
@@ -515,7 +437,7 @@ class TestConfigSerialization:
 
         try:
             # Import from JSON file
-            with open(export_file, 'r') as f:
+            with open(export_file) as f:
                 imported_dict = json.load(f)
 
             imported_config = AppConfig(**imported_dict)
@@ -533,14 +455,9 @@ class TestConfigSerialization:
         """Test configuration comparison after serialization."""
         config1 = AppConfig(
             environment=Environment.DEVELOPMENT,
-            ethereum=EthereumConfig(
-                alchemy_api_key="compare_key",
-                rpc_url="https://compare.com"
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="compare_key", rpc_url="https://compare.com"),
             coingecko=CoinGeckoConfig(),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            )
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
         )
 
         # Serialize and deserialize
@@ -583,14 +500,9 @@ class TestConfigSerialization:
         """Test different model dump modes."""
         config = AppConfig(
             environment=Environment.DEVELOPMENT,
-            ethereum=EthereumConfig(
-                alchemy_api_key="mode_test",
-                rpc_url="https://modes.com"
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="mode_test", rpc_url="https://modes.com"),
             coingecko=CoinGeckoConfig(),
-            google_sheets=GoogleSheetsConfig(
-                credentials_file=Path(__file__)
-            )
+            google_sheets=GoogleSheetsConfig(credentials_file=Path(__file__)),
         )
 
         # Default mode
@@ -598,7 +510,7 @@ class TestConfigSerialization:
         assert isinstance(default_dump, dict)
 
         # JSON mode (should be JSON serializable)
-        json_dump = config.model_dump(mode='json')
+        json_dump = config.model_dump(mode="json")
         assert isinstance(json_dump, dict)
 
         # Should be able to JSON serialize the result

@@ -1,7 +1,6 @@
 """Tests for health checking system."""
 
 import asyncio
-import time
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,10 +22,7 @@ class TestServiceHealth:
     def test_service_health_creation(self):
         """Test ServiceHealth object creation."""
         health = ServiceHealth(
-            service_name="test_service",
-            status=HealthStatus.HEALTHY,
-            response_time=0.5,
-            metadata={"version": "1.0"}
+            service_name="test_service", status=HealthStatus.HEALTHY, response_time=0.5, metadata={"version": "1.0"}
         )
 
         assert health.service_name == "test_service"
@@ -56,11 +52,7 @@ class TestServiceHealth:
         health = ServiceHealth("test", HealthStatus.UNKNOWN)
 
         # First update - success
-        health.update_status(
-            status=HealthStatus.HEALTHY,
-            response_time=0.3,
-            metadata={"test": "value"}
-        )
+        health.update_status(status=HealthStatus.HEALTHY, response_time=0.3, metadata={"test": "value"})
 
         assert health.status == HealthStatus.HEALTHY
         assert health.response_time == 0.3
@@ -69,10 +61,7 @@ class TestServiceHealth:
         assert health.last_healthy_time is not None
 
         # Second update - failure
-        health.update_status(
-            status=HealthStatus.UNHEALTHY,
-            error_message="Service down"
-        )
+        health.update_status(status=HealthStatus.UNHEALTHY, error_message="Service down")
 
         assert health.status == HealthStatus.UNHEALTHY
         assert health.error_message == "Service down"
@@ -86,10 +75,7 @@ class TestServiceHealth:
     def test_service_health_to_dict(self):
         """Test serialization to dictionary."""
         health = ServiceHealth(
-            service_name="test_service",
-            status=HealthStatus.HEALTHY,
-            response_time=0.5,
-            metadata={"key": "value"}
+            service_name="test_service", status=HealthStatus.HEALTHY, response_time=0.5, metadata={"key": "value"}
         )
 
         health_dict = health.to_dict()
@@ -110,12 +96,7 @@ class TestHealthChecker:
     def mock_ethereum_client(self):
         """Create mock Ethereum client."""
         client = AsyncMock()
-        client.get_stats.return_value = {
-            "portfolio_requests": 10,
-            "api_errors": 0,
-            "cache_hits": 5,
-            "rate_limit": 100
-        }
+        client.get_stats.return_value = {"portfolio_requests": 10, "api_errors": 0, "cache_hits": 5, "rate_limit": 100}
         return client
 
     @pytest.fixture
@@ -127,7 +108,7 @@ class TestHealthChecker:
             "price_requests": 20,
             "has_api_key": True,
             "rate_limit": 30,
-            "rate_limit_errors": 0
+            "rate_limit_errors": 0,
         }
         return client
 
@@ -140,7 +121,7 @@ class TestHealthChecker:
             "authenticated": True,
             "read_operations": 5,
             "write_operations": 2,
-            "api_errors": 0
+            "api_errors": 0,
         }
         return client
 
@@ -148,20 +129,12 @@ class TestHealthChecker:
     def mock_cache_manager(self):
         """Create mock cache manager."""
         manager = AsyncMock()
-        manager.health_check = AsyncMock(return_value={
-            "price_cache": True,
-            "balance_cache": True
-        })
-        manager.get_stats = AsyncMock(return_value={
-            "hits": 100,
-            "misses": 20,
-            "backend": "file"
-        })
+        manager.health_check = AsyncMock(return_value={"price_cache": True, "balance_cache": True})
+        manager.get_stats = AsyncMock(return_value={"hits": 100, "misses": 20, "backend": "file"})
         return manager
 
     @pytest.fixture
-    def health_checker(self, mock_ethereum_client, mock_coingecko_client,
-                       mock_sheets_client, mock_cache_manager):
+    def health_checker(self, mock_ethereum_client, mock_coingecko_client, mock_sheets_client, mock_cache_manager):
         """Create HealthChecker instance with mocked dependencies."""
         return HealthChecker(
             ethereum_client=mock_ethereum_client,
@@ -170,7 +143,7 @@ class TestHealthChecker:
             cache_manager=mock_cache_manager,
             timeout_seconds=10.0,
             degraded_threshold_ms=2000.0,
-            unhealthy_threshold_ms=5000.0
+            unhealthy_threshold_ms=5000.0,
         )
 
     @pytest.mark.asyncio
@@ -215,7 +188,7 @@ class TestHealthChecker:
             "portfolio_requests": 10,
             "api_errors": 15,  # High error count
             "cache_hits": 5,
-            "rate_limit": 100
+            "rate_limit": 100,
         }
 
         health = await health_checker._check_ethereum_client()
@@ -249,7 +222,7 @@ class TestHealthChecker:
             "price_requests": 20,
             "has_api_key": True,
             "rate_limit": 30,
-            "rate_limit_errors": 10  # High rate limit errors
+            "rate_limit_errors": 10,  # High rate limit errors
         }
 
         health = await health_checker._check_coingecko_client()
@@ -287,7 +260,7 @@ class TestHealthChecker:
         mock_sheets_client.get_stats.return_value = {
             "authenticated": False,
             "read_operations": 0,
-            "write_operations": 0
+            "write_operations": 0,
         }
 
         health = await health_checker._check_sheets_client()
@@ -308,7 +281,7 @@ class TestHealthChecker:
         """Test cache manager with some backends failing."""
         mock_cache_manager.health_check.return_value = {
             "price_cache": True,
-            "balance_cache": False  # One backend failing
+            "balance_cache": False,  # One backend failing
         }
 
         health = await health_checker._check_cache_manager()
@@ -319,10 +292,7 @@ class TestHealthChecker:
     @pytest.mark.asyncio
     async def test_check_cache_manager_all_failed(self, health_checker, mock_cache_manager):
         """Test cache manager with all backends failing."""
-        mock_cache_manager.health_check.return_value = {
-            "price_cache": False,
-            "balance_cache": False
-        }
+        mock_cache_manager.health_check.return_value = {"price_cache": False, "balance_cache": False}
 
         health = await health_checker._check_cache_manager()
 
@@ -399,10 +369,7 @@ class TestHealthChecker:
     def test_get_health_history(self, health_checker):
         """Test health history retrieval."""
         # Add some history
-        test_entry = {
-            'timestamp': datetime.now(UTC).isoformat(),
-            'summary': {'test_service': True}
-        }
+        test_entry = {"timestamp": datetime.now(UTC).isoformat(), "summary": {"test_service": True}}
         health_checker._add_to_history(test_entry)
 
         history = health_checker.get_health_history()
@@ -411,7 +378,7 @@ class TestHealthChecker:
 
         # Test limit
         for i in range(10):
-            health_checker._add_to_history({'test': i})
+            health_checker._add_to_history({"test": i})
 
         limited_history = health_checker.get_health_history(limit=5)
         assert len(limited_history) == 5
@@ -424,11 +391,11 @@ class TestHealthChecker:
         for i in range(5):
             timestamp = (now - timedelta(hours=i)).isoformat()
             entry = {
-                'timestamp': timestamp,
-                'summary': {
-                    'service1': i % 2 == 0,  # Alternating healthy/unhealthy
-                    'service2': True  # Always healthy
-                }
+                "timestamp": timestamp,
+                "summary": {
+                    "service1": i % 2 == 0,  # Alternating healthy/unhealthy
+                    "service2": True,  # Always healthy
+                },
             }
             health_checker._add_to_history(entry)
 
@@ -447,7 +414,7 @@ class TestHealthChecker:
     def test_clear_health_history(self, health_checker):
         """Test clearing health history."""
         # Add some history
-        health_checker._add_to_history({'test': 'data'})
+        health_checker._add_to_history({"test": "data"})
         assert len(health_checker._health_history) == 1
 
         health_checker.clear_health_history()
@@ -473,23 +440,24 @@ class TestHealthChecker:
         # Add a service
         health_checker._service_health["test"] = ServiceHealth("test", HealthStatus.HEALTHY)
 
-        report = health_checker.export_health_report(format='json')
+        report = health_checker.export_health_report(format="json")
 
         assert isinstance(report, str)
         import json
+
         report_data = json.loads(report)
 
-        assert 'generated_at' in report_data
-        assert 'summary' in report_data
-        assert 'services' in report_data
-        assert 'trends' in report_data
+        assert "generated_at" in report_data
+        assert "summary" in report_data
+        assert "services" in report_data
+        assert "trends" in report_data
 
     def test_export_health_report_text(self, health_checker):
         """Test exporting health report as text."""
         # Add a service
         health_checker._service_health["test"] = ServiceHealth("test", HealthStatus.HEALTHY)
 
-        report = health_checker.export_health_report(format='text')
+        report = health_checker.export_health_report(format="text")
 
         assert isinstance(report, str)
         assert "WALLET TRACKER HEALTH REPORT" in report
@@ -504,7 +472,7 @@ class TestHealthCheckScheduler:
     def mock_health_checker(self):
         """Create mock health checker."""
         checker = AsyncMock()
-        checker.check_all_services = AsyncMock(return_value={'test_service': True})
+        checker.check_all_services = AsyncMock(return_value={"test_service": True})
         return checker
 
     @pytest.fixture
@@ -522,9 +490,9 @@ class TestHealthCheckScheduler:
         """Test scheduler status when not running."""
         status = scheduler.get_scheduler_status()
 
-        assert status['running'] is False
-        assert status['active_tasks'] == 0
-        assert status['total_tasks'] == 0
+        assert status["running"] is False
+        assert status["active_tasks"] == 0
+        assert status["total_tasks"] == 0
 
     @pytest.mark.asyncio
     async def test_schedule_periodic_checks(self, scheduler):
@@ -533,9 +501,7 @@ class TestHealthCheckScheduler:
         alert_callback = AsyncMock()
 
         scheduler.schedule_periodic_checks(
-            interval_minutes=1,
-            detailed_check_interval_minutes=2,
-            alert_callback=alert_callback
+            interval_minutes=1, detailed_check_interval_minutes=2, alert_callback=alert_callback
         )
 
         assert scheduler._running is True
@@ -574,30 +540,23 @@ class TestUtilityFunctions:
         mock_coingecko.health_check.return_value = True
         mock_coingecko.get_stats.return_value = {"rate_limit_errors": 0}
 
-        results = await quick_health_check(
-            ethereum_client=mock_ethereum,
-            coingecko_client=mock_coingecko
-        )
+        results = await quick_health_check(ethereum_client=mock_ethereum, coingecko_client=mock_coingecko)
 
-        assert 'ethereum_client' in results
-        assert 'coingecko_client' in results
-        assert isinstance(results['ethereum_client'], bool)
-        assert isinstance(results['coingecko_client'], bool)
+        assert "ethereum_client" in results
+        assert "coingecko_client" in results
+        assert isinstance(results["ethereum_client"], bool)
+        assert isinstance(results["coingecko_client"], bool)
 
     @pytest.mark.asyncio
     async def test_create_health_alert_handler(self):
         """Test creating health alert handler."""
-        handler = create_health_alert_handler(log_level='ERROR')
+        handler = create_health_alert_handler(log_level="ERROR")
 
         # Test that it's callable
         assert callable(handler)
 
         # Test calling it (should not raise exception)
-        alert_data = {
-            'type': 'test_alert',
-            'services': ['test_service'],
-            'timestamp': datetime.now(UTC).isoformat()
-        }
+        alert_data = {"type": "test_alert", "services": ["test_service"], "timestamp": datetime.now(UTC).isoformat()}
 
         await handler(alert_data)
 
@@ -607,10 +566,10 @@ class TestUtilityFunctions:
         webhook_url = "https://hooks.example.com/webhook"
         handler = create_health_alert_handler(webhook_url=webhook_url)
 
-        alert_data = {'type': 'test'}
+        alert_data = {"type": "test"}
 
         # Mock aiohttp to test webhook call
-        with patch('aiohttp.ClientSession') as mock_session:
+        with patch("aiohttp.ClientSession") as mock_session:
             mock_response = AsyncMock()
             mock_session.return_value.__aenter__.return_value.post.return_value = mock_response
 
@@ -626,17 +585,11 @@ async def test_continuous_monitoring_integration():
     mock_ethereum = AsyncMock()
     mock_ethereum.get_stats.return_value = {"api_errors": 0}
 
-    health_checker = HealthChecker(
-        ethereum_client=mock_ethereum,
-        timeout_seconds=1.0
-    )
+    health_checker = HealthChecker(ethereum_client=mock_ethereum, timeout_seconds=1.0)
 
     # Test that continuous monitoring can be started and stopped
     monitoring_task = asyncio.create_task(
-        health_checker.run_continuous_monitoring(
-            interval_seconds=1,
-            alert_callback=None
-        )
+        health_checker.run_continuous_monitoring(interval_seconds=1, alert_callback=None)
     )
 
     # Let it run briefly

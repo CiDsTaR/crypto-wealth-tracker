@@ -3,8 +3,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 from wallet_tracker.clients.ethereum_types import (
     WELL_KNOWN_TOKENS,
     AlchemyPortfolioResponse,

@@ -1,87 +1,74 @@
 """Tests for errors package __init__ module."""
 
-import pytest
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from wallet_tracker.errors import (
-    # Base error classes
-    WalletTrackerError,
-    ErrorSeverity,
-    ErrorCategory,
-    RecoveryStrategy,
-
-    # Specific errors
-    ConfigurationError,
-    AuthenticationError,
-    NetworkError,
+    ERROR_CODES,
     APIError,
-    RateLimitError,
-    ValidationError,
-    InvalidAddressError,
-    DataNotFoundError,
-    InsufficientBalanceError,
-    ProcessingError,
-    BatchProcessingError,
-    SystemResourceError,
-    CacheError,
-    TimeoutError,
-    EthereumClientError,
-    CoinGeckoError,
-    GoogleSheetsError,
-    UserInputError,
-    CommandLineError,
-
-    # Handler classes
-    ErrorHandler,
     APIErrorHandler,
-    NetworkErrorHandler,
-    ProcessingErrorHandler,
-    CircuitBreaker,
-    CircuitState,
-    CircuitBreakerOpenError,
-    ErrorStats,
-    ErrorReport,
-
-    # Global handlers
-    get_global_error_handler,
-    get_api_error_handler,
-    get_network_error_handler,
-    get_processing_error_handler,
-
-    # Decorators and context managers
-    handle_errors,
-    error_context,
-
+    AuthenticationError,
+    BatchProcessingError,
+    CacheError,
     # Recovery classes
     CheckpointData,
     CheckpointManager,
-    RecoveryManager,
+    CircuitBreaker,
+    CircuitState,
+    CoinGeckoError,
+    CommandLineError,
+    # Specific errors
+    ConfigurationError,
+    DataNotFoundError,
+    ErrorCategory,
+    # Handler classes
+    ErrorHandler,
+    ErrorReport,
+    ErrorSeverity,
+    ErrorStats,
+    EthereumClientError,
+    GoogleSheetsError,
+    InsufficientBalanceError,
+    InvalidAddressError,
+    NetworkError,
+    NetworkErrorHandler,
+    ProcessingError,
+    ProcessingErrorHandler,
     ProgressTracker,
+    RateLimitError,
+    RecoveryManager,
     RecoverySession,
-
+    RecoveryStrategy,
+    SystemResourceError,
+    TimeoutError,
+    UserInputError,
+    ValidationError,
+    # Base error classes
+    WalletTrackerError,
+    classify_error_severity,
+    create_custom_error,
     # Utility functions
     create_error_from_exception,
-    classify_error_severity,
-    get_recovery_strategy,
+    create_recovery_context,
+    get_api_error_handler,
     get_error_code,
     get_error_name,
-    ERROR_CODES,
-    handle_and_log_error,
-    setup_error_logging,
-    setup_error_callbacks,
-    with_checkpointing,
-    create_recovery_context,
-
     # Package-level functions
     get_global_checkpoint_manager,
+    # Global handlers
+    get_global_error_handler,
     get_global_recovery_manager,
-    setup_error_system,
+    get_recovery_strategy,
+    handle_and_log_error,
     handle_api_error,
+    # Decorators and context managers
     handle_network_operation,
     handle_processing_operation,
-    create_custom_error,
+    setup_error_callbacks,
+    setup_error_logging,
+    setup_error_system,
+    with_checkpointing,
 )
 
 
@@ -98,11 +85,25 @@ class TestPackageImports:
 
         # Specific error classes
         error_classes = [
-            ConfigurationError, AuthenticationError, NetworkError, APIError,
-            RateLimitError, ValidationError, InvalidAddressError, DataNotFoundError,
-            InsufficientBalanceError, ProcessingError, BatchProcessingError,
-            SystemResourceError, CacheError, TimeoutError, EthereumClientError,
-            CoinGeckoError, GoogleSheetsError, UserInputError, CommandLineError
+            ConfigurationError,
+            AuthenticationError,
+            NetworkError,
+            APIError,
+            RateLimitError,
+            ValidationError,
+            InvalidAddressError,
+            DataNotFoundError,
+            InsufficientBalanceError,
+            ProcessingError,
+            BatchProcessingError,
+            SystemResourceError,
+            CacheError,
+            TimeoutError,
+            EthereumClientError,
+            CoinGeckoError,
+            GoogleSheetsError,
+            UserInputError,
+            CommandLineError,
         ]
 
         for error_class in error_classes:
@@ -112,8 +113,13 @@ class TestPackageImports:
     def test_handler_classes_import(self):
         """Test that all handler classes are importable."""
         handler_classes = [
-            ErrorHandler, APIErrorHandler, NetworkErrorHandler, ProcessingErrorHandler,
-            CircuitBreaker, ErrorStats, ErrorReport
+            ErrorHandler,
+            APIErrorHandler,
+            NetworkErrorHandler,
+            ProcessingErrorHandler,
+            CircuitBreaker,
+            ErrorStats,
+            ErrorReport,
         ]
 
         for handler_class in handler_classes:
@@ -121,10 +127,7 @@ class TestPackageImports:
 
     def test_recovery_classes_import(self):
         """Test that all recovery classes are importable."""
-        recovery_classes = [
-            CheckpointData, CheckpointManager, RecoveryManager,
-            ProgressTracker, RecoverySession
-        ]
+        recovery_classes = [CheckpointData, CheckpointManager, RecoveryManager, ProgressTracker, RecoverySession]
 
         for recovery_class in recovery_classes:
             assert recovery_class is not None
@@ -132,9 +135,16 @@ class TestPackageImports:
     def test_utility_functions_import(self):
         """Test that all utility functions are importable."""
         utility_functions = [
-            create_error_from_exception, classify_error_severity, get_recovery_strategy,
-            get_error_code, get_error_name, handle_and_log_error, setup_error_logging,
-            setup_error_callbacks, with_checkpointing, create_recovery_context
+            create_error_from_exception,
+            classify_error_severity,
+            get_recovery_strategy,
+            get_error_code,
+            get_error_name,
+            handle_and_log_error,
+            setup_error_logging,
+            setup_error_callbacks,
+            with_checkpointing,
+            create_recovery_context,
         ]
 
         for func in utility_functions:
@@ -163,6 +173,7 @@ class TestGlobalManagers:
 
         # Clear global instance first
         import wallet_tracker.errors
+
         wallet_tracker.errors._global_checkpoint_manager = None
 
         manager = get_global_checkpoint_manager(storage_path=custom_path)
@@ -190,6 +201,7 @@ class TestErrorSystemSetup:
         """Test setting up error system with defaults."""
         # Clear global instances
         import wallet_tracker.errors
+
         wallet_tracker.errors._global_checkpoint_manager = None
         wallet_tracker.errors._global_recovery_manager = None
 
@@ -214,16 +226,14 @@ class TestErrorSystemSetup:
         """Test setting up error system with custom configuration."""
         # Clear global instances
         import wallet_tracker.errors
+
         wallet_tracker.errors._global_checkpoint_manager = None
         wallet_tracker.errors._global_recovery_manager = None
 
         custom_path = Path("/tmp/test_checkpoints")
 
         components = setup_error_system(
-            storage_path=custom_path,
-            enable_file_checkpoints=True,
-            max_retries=5,
-            enable_circuit_breakers=False
+            storage_path=custom_path, enable_file_checkpoints=True, max_retries=5, enable_circuit_breakers=False
         )
 
         # Verify custom configuration
@@ -235,6 +245,7 @@ class TestErrorSystemSetup:
         """Test setting up error system without file checkpoints."""
         # Clear global instances
         import wallet_tracker.errors
+
         wallet_tracker.errors._global_checkpoint_manager = None
 
         components = setup_error_system(enable_file_checkpoints=False)
@@ -255,11 +266,7 @@ class TestConvenienceFunctions:
             call_count.append(1)
             return "api_result"
 
-        result = await handle_api_error(
-            test_api_call,
-            service_name="TestAPI",
-            max_retries=3
-        )
+        result = await handle_api_error(test_api_call, service_name="TestAPI", max_retries=3)
 
         assert result == "api_result"
         assert len(call_count) == 1
@@ -275,11 +282,7 @@ class TestConvenienceFunctions:
                 raise APIError("API temporarily unavailable")
             return "success_after_retry"
 
-        result = await handle_api_error(
-            failing_api_call,
-            service_name="RetryAPI",
-            max_retries=5
-        )
+        result = await handle_api_error(failing_api_call, service_name="RetryAPI", max_retries=5)
 
         assert result == "success_after_retry"
         assert len(call_count) == 3
@@ -291,10 +294,7 @@ class TestConvenienceFunctions:
         async def test_network_call():
             return "network_result"
 
-        result = await handle_network_operation(
-            test_network_call,
-            operation_name="test_network"
-        )
+        result = await handle_network_operation(test_network_call, operation_name="test_network")
 
         assert result == "network_result"
 
@@ -309,10 +309,7 @@ class TestConvenienceFunctions:
                 raise NetworkError("Network timeout")
             return "network_success"
 
-        result = await handle_network_operation(
-            failing_network_call,
-            operation_name="retry_network"
-        )
+        result = await handle_network_operation(failing_network_call, operation_name="retry_network")
 
         assert result == "network_success"
         assert len(call_count) == 2
@@ -325,9 +322,7 @@ class TestConvenienceFunctions:
             return "processed_data"
 
         result = await handle_processing_operation(
-            test_processing,
-            operation_name="simple_processing",
-            enable_checkpoints=False
+            test_processing, operation_name="simple_processing", enable_checkpoints=False
         )
 
         assert result == "processed_data"
@@ -347,7 +342,7 @@ class TestConvenienceFunctions:
             test_processing_with_session,
             operation_name="checkpoint_processing",
             enable_checkpoints=True,
-            total_items=100
+            total_items=100,
         )
 
         assert result == "processed_with_checkpoints"
@@ -362,7 +357,7 @@ class TestConvenienceFunctions:
             severity=ErrorSeverity.HIGH,
             category=ErrorCategory.BUSINESS_LOGIC,
             recovery_strategy=RecoveryStrategy.FALLBACK,
-            custom_context="test_data"
+            custom_context="test_data",
         )
 
         assert isinstance(error, WalletTrackerError)
@@ -380,18 +375,21 @@ class TestPackageMetadata:
     def test_package_version(self):
         """Test package version is defined."""
         from wallet_tracker.errors import __version__
+
         assert __version__ is not None
         assert isinstance(__version__, str)
 
     def test_package_author(self):
         """Test package author is defined."""
         from wallet_tracker.errors import __author__
+
         assert __author__ is not None
         assert isinstance(__author__, str)
 
     def test_package_description(self):
         """Test package description is defined."""
         from wallet_tracker.errors import __description__
+
         assert __description__ is not None
         assert isinstance(__description__, str)
 
@@ -404,10 +402,7 @@ class TestDefaultFallbackHandler:
         """Test default fallback handler with existing checkpoint."""
         # Create checkpoint manager and add a checkpoint
         checkpoint_manager = get_global_checkpoint_manager()
-        await checkpoint_manager.create_checkpoint(
-            "fallback_test",
-            {"fallback": "data"}
-        )
+        await checkpoint_manager.create_checkpoint("fallback_test", {"fallback": "data"})
 
         # Import the default fallback handler
         from wallet_tracker.errors import _default_fallback_handler
@@ -436,10 +431,7 @@ class TestErrorSystemIntegration:
     async def test_full_error_system_integration(self):
         """Test complete error system integration."""
         # Setup error system
-        components = setup_error_system(
-            enable_file_checkpoints=False,
-            max_retries=2
-        )
+        components = setup_error_system(enable_file_checkpoints=False, max_retries=2)
 
         # Test error handling with recovery
         processing_steps = []
@@ -456,10 +448,7 @@ class TestErrorSystemIntegration:
 
         # Use convenience function that integrates all components
         result = await handle_processing_operation(
-            complex_operation,
-            operation_name="integration_test",
-            enable_checkpoints=True,
-            total_items=10
+            complex_operation, operation_name="integration_test", enable_checkpoints=True, total_items=10
         )
 
         assert result == "completed"
@@ -514,7 +503,8 @@ class TestErrorLoggingSetup:
 
         # Verify logger exists and is configured
         import logging
-        logger = logging.getLogger('wallet_tracker.errors')
+
+        logger = logging.getLogger("wallet_tracker.errors")
         assert logger is not None
         assert logger.level <= logging.INFO
 
@@ -531,10 +521,7 @@ class TestErrorLoggingSetup:
         assert len(handler._error_callbacks) > 0
 
         # Test that callbacks can handle different error types
-        critical_error = WalletTrackerError(
-            "Critical test error",
-            severity=ErrorSeverity.CRITICAL
-        )
+        critical_error = WalletTrackerError("Critical test error", severity=ErrorSeverity.CRITICAL)
 
         auth_error = AuthenticationError("Auth test error")
 
@@ -553,22 +540,20 @@ class TestPackageStructure:
 
         # Test major categories of exports
         error_classes = [
-            'WalletTrackerError', 'ConfigurationError', 'AuthenticationError',
-            'NetworkError', 'APIError', 'ValidationError', 'ProcessingError'
+            "WalletTrackerError",
+            "ConfigurationError",
+            "AuthenticationError",
+            "NetworkError",
+            "APIError",
+            "ValidationError",
+            "ProcessingError",
         ]
 
-        handler_classes = [
-            'ErrorHandler', 'APIErrorHandler', 'CircuitBreaker', 'ErrorStats'
-        ]
+        handler_classes = ["ErrorHandler", "APIErrorHandler", "CircuitBreaker", "ErrorStats"]
 
-        recovery_classes = [
-            'CheckpointManager', 'RecoveryManager', 'ProgressTracker', 'RecoverySession'
-        ]
+        recovery_classes = ["CheckpointManager", "RecoveryManager", "ProgressTracker", "RecoverySession"]
 
-        utility_functions = [
-            'create_error_from_exception', 'get_error_code', 'handle_api_error',
-            'setup_error_system'
-        ]
+        utility_functions = ["create_error_from_exception", "get_error_code", "handle_api_error", "setup_error_system"]
 
         all_expected = error_classes + handler_classes + recovery_classes + utility_functions
 
@@ -583,8 +568,11 @@ class TestPackageStructure:
 
         # Test some expected error codes
         expected_codes = [
-            'INVALID_CONFIG', 'AUTH_FAILED', 'NETWORK_TIMEOUT',
-            'RATE_LIMIT_EXCEEDED', 'PROCESSING_FAILED'
+            "INVALID_CONFIG",
+            "AUTH_FAILED",
+            "NETWORK_TIMEOUT",
+            "RATE_LIMIT_EXCEEDED",
+            "PROCESSING_FAILED",
         ]
 
         for code in expected_codes:
@@ -594,25 +582,25 @@ class TestPackageStructure:
     def test_enum_exports(self):
         """Test that enums are properly exported."""
         # Test ErrorSeverity enum
-        assert hasattr(ErrorSeverity, 'LOW')
-        assert hasattr(ErrorSeverity, 'MEDIUM')
-        assert hasattr(ErrorSeverity, 'HIGH')
-        assert hasattr(ErrorSeverity, 'CRITICAL')
+        assert hasattr(ErrorSeverity, "LOW")
+        assert hasattr(ErrorSeverity, "MEDIUM")
+        assert hasattr(ErrorSeverity, "HIGH")
+        assert hasattr(ErrorSeverity, "CRITICAL")
 
         # Test ErrorCategory enum
-        assert hasattr(ErrorCategory, 'CONFIGURATION')
-        assert hasattr(ErrorCategory, 'NETWORK')
-        assert hasattr(ErrorCategory, 'API_LIMIT')
+        assert hasattr(ErrorCategory, "CONFIGURATION")
+        assert hasattr(ErrorCategory, "NETWORK")
+        assert hasattr(ErrorCategory, "API_LIMIT")
 
         # Test RecoveryStrategy enum
-        assert hasattr(RecoveryStrategy, 'RETRY')
-        assert hasattr(RecoveryStrategy, 'EXPONENTIAL_BACKOFF')
-        assert hasattr(RecoveryStrategy, 'FALLBACK')
+        assert hasattr(RecoveryStrategy, "RETRY")
+        assert hasattr(RecoveryStrategy, "EXPONENTIAL_BACKOFF")
+        assert hasattr(RecoveryStrategy, "FALLBACK")
 
         # Test CircuitState enum
-        assert hasattr(CircuitState, 'CLOSED')
-        assert hasattr(CircuitState, 'OPEN')
-        assert hasattr(CircuitState, 'HALF_OPEN')
+        assert hasattr(CircuitState, "CLOSED")
+        assert hasattr(CircuitState, "OPEN")
+        assert hasattr(CircuitState, "HALF_OPEN")
 
 
 class TestBackwardCompatibility:
@@ -638,8 +626,12 @@ class TestBackwardCompatibility:
         """Test that class inheritance is stable."""
         # All specific errors should inherit from WalletTrackerError
         specific_errors = [
-            ConfigurationError, AuthenticationError, NetworkError,
-            APIError, ValidationError, ProcessingError
+            ConfigurationError,
+            AuthenticationError,
+            NetworkError,
+            APIError,
+            ValidationError,
+            ProcessingError,
         ]
 
         for error_class in specific_errors:

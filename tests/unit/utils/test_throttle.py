@@ -2,25 +2,26 @@
 
 import asyncio
 import time
-import pytest
-from unittest.mock import patch, MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from wallet_tracker.utils.throttle import (
     BackoffConfig,
     BackoffStrategy,
+    CombinedThrottleAndRateLimit,
+    Throttle,
     ThrottleConfig,
+    ThrottleManager,
     ThrottleMode,
     ThrottleState,
-    Throttle,
-    ThrottleManager,
-    CombinedThrottleAndRateLimit,
-    create_ethereum_throttle,
-    create_coingecko_throttle,
-    create_sheets_throttle,
     create_aggressive_backoff,
+    create_coingecko_throttle,
+    create_ethereum_throttle,
     create_gentle_backoff,
-    throttled
+    create_sheets_throttle,
+    throttled,
 )
 
 
@@ -40,12 +41,7 @@ class TestBackoffConfig:
 
     def test_exponential_backoff(self):
         """Test exponential backoff calculation."""
-        config = BackoffConfig(
-            strategy=BackoffStrategy.EXPONENTIAL,
-            initial_delay=1.0,
-            multiplier=2.0,
-            jitter=False
-        )
+        config = BackoffConfig(strategy=BackoffStrategy.EXPONENTIAL, initial_delay=1.0, multiplier=2.0, jitter=False)
 
         assert config.calculate_delay(0) == 1.0  # 1 * 2^0
         assert config.calculate_delay(1) == 2.0  # 1 * 2^1
@@ -54,12 +50,7 @@ class TestBackoffConfig:
 
     def test_linear_backoff(self):
         """Test linear backoff calculation."""
-        config = BackoffConfig(
-            strategy=BackoffStrategy.LINEAR,
-            initial_delay=1.0,
-            additive_increase=0.5,
-            jitter=False
-        )
+        config = BackoffConfig(strategy=BackoffStrategy.LINEAR, initial_delay=1.0, additive_increase=0.5, jitter=False)
 
         assert config.calculate_delay(0) == 1.0  # 1 + 0 * 0.5
         assert config.calculate_delay(1) == 1.5  # 1 + 1 * 0.5
@@ -68,11 +59,7 @@ class TestBackoffConfig:
 
     def test_fixed_backoff(self):
         """Test fixed backoff calculation."""
-        config = BackoffConfig(
-            strategy=BackoffStrategy.FIXED,
-            initial_delay=2.0,
-            jitter=False
-        )
+        config = BackoffConfig(strategy=BackoffStrategy.FIXED, initial_delay=2.0, jitter=False)
 
         assert config.calculate_delay(0) == 2.0
         assert config.calculate_delay(1) == 2.0
@@ -81,11 +68,7 @@ class TestBackoffConfig:
 
     def test_fibonacci_backoff(self):
         """Test Fibonacci backoff calculation."""
-        config = BackoffConfig(
-            strategy=BackoffStrategy.FIBONACCI,
-            initial_delay=1.0,
-            jitter=False
-        )
+        config = BackoffConfig(strategy=BackoffStrategy.FIBONACCI, initial_delay=1.0, jitter=False)
 
         assert config.calculate_delay(0) == 1.0  # 1 * fib(1) = 1 * 1
         assert config.calculate_delay(1) == 1.0  # 1 * fib(2) = 1 * 1
@@ -96,10 +79,7 @@ class TestBackoffConfig:
     def test_polynomial_backoff(self):
         """Test polynomial backoff calculation."""
         config = BackoffConfig(
-            strategy=BackoffStrategy.POLYNOMIAL,
-            initial_delay=1.0,
-            polynomial_degree=2.0,
-            jitter=False
+            strategy=BackoffStrategy.POLYNOMIAL, initial_delay=1.0, polynomial_degree=2.0, jitter=False
         )
 
         assert config.calculate_delay(0) == 0.0  # 1 * 0^2 = 0
@@ -114,10 +94,7 @@ class TestBackoffConfig:
             return base_delay * (attempt + 1) * 3
 
         config = BackoffConfig(
-            strategy=BackoffStrategy.CUSTOM,
-            initial_delay=1.0,
-            custom_function=custom_func,
-            jitter=False
+            strategy=BackoffStrategy.CUSTOM, initial_delay=1.0, custom_function=custom_func, jitter=False
         )
 
         assert config.calculate_delay(0) == 3.0  # 1 * (0 + 1) * 3
@@ -127,23 +104,14 @@ class TestBackoffConfig:
     def test_max_delay_enforcement(self):
         """Test that max delay is enforced."""
         config = BackoffConfig(
-            strategy=BackoffStrategy.EXPONENTIAL,
-            initial_delay=1.0,
-            multiplier=2.0,
-            max_delay=5.0,
-            jitter=False
+            strategy=BackoffStrategy.EXPONENTIAL, initial_delay=1.0, multiplier=2.0, max_delay=5.0, jitter=False
         )
 
         assert config.calculate_delay(10) == 5.0  # Would be 1024, capped at 5.0
 
     def test_jitter_application(self):
         """Test that jitter is applied."""
-        config = BackoffConfig(
-            strategy=BackoffStrategy.FIXED,
-            initial_delay=10.0,
-            jitter=True,
-            jitter_range=0.1
-        )
+        config = BackoffConfig(strategy=BackoffStrategy.FIXED, initial_delay=10.0, jitter=True, jitter_range=0.1)
 
         # Calculate multiple delays to test jitter variation
         delays = [config.calculate_delay(0) for _ in range(100)]
@@ -182,10 +150,7 @@ class TestThrottleConfig:
     def test_time_based_delay_calculation(self):
         """Test time-based delay calculation."""
         config = ThrottleConfig(
-            mode=ThrottleMode.TIME_BASED,
-            requests_per_second=10.0,
-            peak_hours=[9, 10, 11],
-            peak_multiplier=0.5
+            mode=ThrottleMode.TIME_BASED, requests_per_second=10.0, peak_hours=[9, 10, 11], peak_multiplier=0.5
         )
 
         # Test during peak hours
@@ -200,10 +165,7 @@ class TestThrottleConfig:
 
     def test_constant_mode_delay(self):
         """Test constant mode delay calculation."""
-        config = ThrottleConfig(
-            mode=ThrottleMode.CONSTANT,
-            requests_per_second=5.0
-        )
+        config = ThrottleConfig(mode=ThrottleMode.CONSTANT, requests_per_second=5.0)
 
         delay = config.get_delay_for_time()
         assert delay == 0.2  # 1/5 = 0.2
@@ -283,10 +245,7 @@ class TestThrottle:
     @pytest.fixture
     def config(self):
         """Create test throttle configuration."""
-        return ThrottleConfig(
-            mode=ThrottleMode.CONSTANT,
-            requests_per_second=10.0
-        )
+        return ThrottleConfig(mode=ThrottleMode.CONSTANT, requests_per_second=10.0)
 
     @pytest.fixture
     def throttle(self, config):
@@ -401,11 +360,7 @@ class TestThrottleModes:
     async def test_adaptive_mode(self):
         """Test adaptive throttling mode."""
         config = ThrottleConfig(
-            mode=ThrottleMode.ADAPTIVE,
-            requests_per_second=10.0,
-            min_delay=0.05,
-            max_delay=1.0,
-            adaptation_factor=1.2
+            mode=ThrottleMode.ADAPTIVE, requests_per_second=10.0, min_delay=0.05, max_delay=1.0, adaptation_factor=1.2
         )
         throttle = Throttle(config)
 
@@ -424,10 +379,7 @@ class TestThrottleModes:
     async def test_burst_then_throttle_mode(self):
         """Test burst-then-throttle mode."""
         config = ThrottleConfig(
-            mode=ThrottleMode.BURST_THEN_THROTTLE,
-            requests_per_second=10.0,
-            burst_size=3,
-            burst_window_seconds=1.0
+            mode=ThrottleMode.BURST_THEN_THROTTLE, requests_per_second=10.0, burst_size=3, burst_window_seconds=1.0
         )
         throttle = Throttle(config)
 
@@ -447,12 +399,12 @@ class TestThrottleModes:
             mode=ThrottleMode.TIME_BASED,
             requests_per_second=10.0,
             peak_hours=[10],  # 10 AM
-            peak_multiplier=0.5
+            peak_multiplier=0.5,
         )
         throttle = Throttle(config)
 
         # Mock current time to be during peak hours
-        with patch('wallet_tracker.utils.throttle.datetime') as mock_datetime:
+        with patch("wallet_tracker.utils.throttle.datetime") as mock_datetime:
             mock_datetime.fromtimestamp.return_value = datetime(2024, 1, 1, 10, 0)
 
             delay = await throttle.acquire()
@@ -705,11 +657,7 @@ class TestCombinedThrottleAndRateLimit:
         throttle_config = ThrottleConfig(requests_per_second=10.0)
         throttle = Throttle(throttle_config)
 
-        return CombinedThrottleAndRateLimit(
-            throttle=throttle,
-            rate_limiter=mock_rate_limiter,
-            name="combined_test"
-        )
+        return CombinedThrottleAndRateLimit(throttle=throttle, rate_limiter=mock_rate_limiter, name="combined_test")
 
     @pytest.mark.asyncio
     async def test_combined_acquire(self, combined_system, mock_rate_limiter):
@@ -767,7 +715,7 @@ class TestThrottleIntegration:
         """Test end-to-end throttling behavior."""
         config = ThrottleConfig(
             mode=ThrottleMode.CONSTANT,
-            requests_per_second=5.0  # 0.2 second intervals
+            requests_per_second=5.0,  # 0.2 second intervals
         )
         throttle = Throttle(config, name="integration_test")
 
@@ -797,10 +745,7 @@ class TestThrottleIntegration:
     async def test_adaptive_throttle_behavior(self):
         """Test adaptive throttle responds to failure patterns."""
         config = ThrottleConfig(
-            mode=ThrottleMode.ADAPTIVE,
-            requests_per_second=10.0,
-            adaptation_factor=2.0,
-            adaptation_threshold=0.8
+            mode=ThrottleMode.ADAPTIVE, requests_per_second=10.0, adaptation_factor=2.0, adaptation_threshold=0.8
         )
         throttle = Throttle(config)
 
@@ -811,7 +756,7 @@ class TestThrottleIntegration:
         # Force adaptation by mocking time
         original_delay = throttle.state.current_delay
 
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             mock_time.return_value = time.time() + 31  # Force adaptation
 
             await throttle.acquire()
@@ -823,10 +768,7 @@ class TestThrottleIntegration:
     async def test_burst_throttle_behavior(self):
         """Test burst-then-throttle behavior."""
         config = ThrottleConfig(
-            mode=ThrottleMode.BURST_THEN_THROTTLE,
-            requests_per_second=2.0,
-            burst_size=3,
-            burst_window_seconds=1.0
+            mode=ThrottleMode.BURST_THEN_THROTTLE, requests_per_second=2.0, burst_size=3, burst_window_seconds=1.0
         )
         throttle = Throttle(config)
 
@@ -927,12 +869,12 @@ class TestThrottleEdgeCases:
         """Test custom backoff strategy without custom function."""
         config = BackoffConfig(
             strategy=BackoffStrategy.CUSTOM,
-            custom_function=None  # No custom function provided
+            custom_function=None,  # No custom function provided
         )
 
         # Should fall back to exponential
         delay = config.calculate_delay(2)
-        expected = 1.0 * (2.0 ** 2)  # Exponential fallback
+        expected = 1.0 * (2.0**2)  # Exponential fallback
         assert delay == expected
 
     @pytest.mark.asyncio
@@ -941,7 +883,7 @@ class TestThrottleEdgeCases:
         config = ThrottleConfig(
             mode=ThrottleMode.BURST_THEN_THROTTLE,
             burst_size=2,
-            burst_window_seconds=0.1  # Very short window
+            burst_window_seconds=0.1,  # Very short window
         )
         throttle = Throttle(config)
 

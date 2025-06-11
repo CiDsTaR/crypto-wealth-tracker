@@ -1,43 +1,40 @@
 """Tests for error exceptions module."""
 
-import pytest
 from datetime import datetime
 
 from wallet_tracker.errors.exceptions import (
-    # Base classes
-    WalletTrackerError,
-    ErrorSeverity,
-    ErrorCategory,
-    RecoveryStrategy,
-
+    ERROR_CODES,
+    APIError,
+    AuthenticationError,
+    BatchProcessingError,
+    CacheError,
+    CoinGeckoError,
+    CommandLineError,
     # Specific errors
     ConfigurationError,
-    AuthenticationError,
-    NetworkError,
-    APIError,
-    RateLimitError,
-    ValidationError,
-    InvalidAddressError,
     DataNotFoundError,
-    InsufficientBalanceError,
-    ProcessingError,
-    BatchProcessingError,
-    SystemResourceError,
-    CacheError,
-    TimeoutError,
+    ErrorCategory,
+    ErrorSeverity,
     EthereumClientError,
-    CoinGeckoError,
     GoogleSheetsError,
+    InsufficientBalanceError,
+    InvalidAddressError,
+    NetworkError,
+    ProcessingError,
+    RateLimitError,
+    RecoveryStrategy,
+    SystemResourceError,
+    TimeoutError,
     UserInputError,
-    CommandLineError,
-
+    ValidationError,
+    # Base classes
+    WalletTrackerError,
+    classify_error_severity,
     # Utility functions
     create_error_from_exception,
-    classify_error_severity,
-    get_recovery_strategy,
     get_error_code,
     get_error_name,
-    ERROR_CODES,
+    get_recovery_strategy,
 )
 
 
@@ -69,7 +66,7 @@ class TestWalletTrackerError:
             recovery_strategy=RecoveryStrategy.RETRY,
             context=context,
             original_error=original_exc,
-            user_message="User-friendly message"
+            user_message="User-friendly message",
         )
 
         assert error.message == "Detailed error message"
@@ -100,7 +97,7 @@ class TestWalletTrackerError:
             category=ErrorCategory.NETWORK,
             recovery_strategy=RecoveryStrategy.RETRY,
             context={"test": "data"},
-            user_message="User message"
+            user_message="User message",
         )
 
         result = error.to_dict()
@@ -213,10 +210,7 @@ class TestAPIError:
     def test_with_full_context(self):
         """Test API error with full context."""
         error = APIError(
-            "Server error",
-            service="TestAPI",
-            status_code=500,
-            response_body='{"error": "Internal server error"}'
+            "Server error", service="TestAPI", status_code=500, response_body='{"error": "Internal server error"}'
         )
 
         assert error.context["service"] == "TestAPI"
@@ -257,12 +251,7 @@ class TestValidationError:
 
     def test_with_field_details(self):
         """Test validation error with field details."""
-        error = ValidationError(
-            "Value must be positive",
-            field="amount",
-            value=-100,
-            expected_type="positive number"
-        )
+        error = ValidationError("Value must be positive", field="amount", value=-100, expected_type="positive number")
 
         assert error.context["field"] == "amount"
         assert error.context["value"] == "-100"
@@ -299,11 +288,7 @@ class TestDataNotFoundError:
 
     def test_with_resource_details(self):
         """Test data not found error with resource details."""
-        error = DataNotFoundError(
-            "Token not found",
-            resource_type="token",
-            identifier="0x123abc"
-        )
+        error = DataNotFoundError("Token not found", resource_type="token", identifier="0x123abc")
 
         assert error.context["resource_type"] == "token"
         assert error.context["identifier"] == "0x123abc"
@@ -325,11 +310,7 @@ class TestProcessingError:
 
     def test_with_operation_details(self):
         """Test processing error with operation details."""
-        error = ProcessingError(
-            "Analysis failed",
-            operation="wallet_analysis",
-            stage="token_balance_calculation"
-        )
+        error = ProcessingError("Analysis failed", operation="wallet_analysis", stage="token_balance_calculation")
 
         assert error.context["operation"] == "wallet_analysis"
         assert error.context["stage"] == "token_balance_calculation"
@@ -341,12 +322,7 @@ class TestBatchProcessingError:
 
     def test_initialization(self):
         """Test batch processing error."""
-        error = BatchProcessingError(
-            "Batch failed",
-            batch_id="batch_123",
-            processed_count=50,
-            failed_count=10
-        )
+        error = BatchProcessingError("Batch failed", batch_id="batch_123", processed_count=50, failed_count=10)
 
         assert error.context["batch_id"] == "batch_123"
         assert error.context["processed_count"] == 50
@@ -370,12 +346,7 @@ class TestSystemResourceError:
 
     def test_with_resource_details(self):
         """Test system resource error with details."""
-        error = SystemResourceError(
-            "Memory limit exceeded",
-            resource_type="memory",
-            current_usage="8GB",
-            limit="8GB"
-        )
+        error = SystemResourceError("Memory limit exceeded", resource_type="memory", current_usage="8GB", limit="8GB")
 
         assert error.context["resource_type"] == "memory"
         assert error.context["current_usage"] == "8GB"
@@ -388,11 +359,7 @@ class TestCacheError:
 
     def test_initialization(self):
         """Test cache error."""
-        error = CacheError(
-            "Cache connection failed",
-            cache_backend="redis",
-            operation="get"
-        )
+        error = CacheError("Cache connection failed", cache_backend="redis", operation="get")
 
         assert error.message == "Cache connection failed"
         assert error.severity == ErrorSeverity.LOW
@@ -407,11 +374,7 @@ class TestTimeoutError:
 
     def test_initialization(self):
         """Test timeout error."""
-        error = TimeoutError(
-            "Operation timed out",
-            operation="wallet_analysis",
-            timeout_seconds=30.0
-        )
+        error = TimeoutError("Operation timed out", operation="wallet_analysis", timeout_seconds=30.0)
 
         assert error.message == "Operation timed out"
         assert error.severity == ErrorSeverity.MEDIUM
@@ -441,10 +404,7 @@ class TestExternalServiceErrors:
 
     def test_google_sheets_error(self):
         """Test Google Sheets error."""
-        error = GoogleSheetsError(
-            "Permission denied",
-            spreadsheet_id="1234567890"
-        )
+        error = GoogleSheetsError("Permission denied", spreadsheet_id="1234567890")
 
         assert error.message == "Permission denied"
         assert error.context["service"] == "Google Sheets"
@@ -457,11 +417,7 @@ class TestUserInputErrors:
 
     def test_user_input_error(self):
         """Test user input error."""
-        error = UserInputError(
-            "Invalid format",
-            input_field="wallet_address",
-            provided_value="invalid_address"
-        )
+        error = UserInputError("Invalid format", input_field="wallet_address", provided_value="invalid_address")
 
         assert error.message == "Invalid format"
         assert error.severity == ErrorSeverity.LOW
@@ -613,9 +569,15 @@ class TestUtilityFunctions:
         """Test error codes registry structure."""
         # Test that all expected error types have codes
         expected_errors = [
-            'INVALID_CONFIG', 'AUTH_FAILED', 'NETWORK_TIMEOUT',
-            'RATE_LIMIT_EXCEEDED', 'INVALID_ADDRESS', 'PROCESSING_FAILED',
-            'OUT_OF_MEMORY', 'ETHEREUM_RPC_ERROR', 'INVALID_USER_INPUT'
+            "INVALID_CONFIG",
+            "AUTH_FAILED",
+            "NETWORK_TIMEOUT",
+            "RATE_LIMIT_EXCEEDED",
+            "INVALID_ADDRESS",
+            "PROCESSING_FAILED",
+            "OUT_OF_MEMORY",
+            "ETHEREUM_RPC_ERROR",
+            "INVALID_USER_INPUT",
         ]
 
         for error_name in expected_errors:
@@ -637,11 +599,25 @@ class TestErrorInheritance:
     def test_all_errors_inherit_from_base(self):
         """Test that all error classes inherit from WalletTrackerError."""
         error_classes = [
-            ConfigurationError, AuthenticationError, NetworkError, APIError,
-            RateLimitError, ValidationError, InvalidAddressError, DataNotFoundError,
-            InsufficientBalanceError, ProcessingError, BatchProcessingError,
-            SystemResourceError, CacheError, TimeoutError, EthereumClientError,
-            CoinGeckoError, GoogleSheetsError, UserInputError, CommandLineError
+            ConfigurationError,
+            AuthenticationError,
+            NetworkError,
+            APIError,
+            RateLimitError,
+            ValidationError,
+            InvalidAddressError,
+            DataNotFoundError,
+            InsufficientBalanceError,
+            ProcessingError,
+            BatchProcessingError,
+            SystemResourceError,
+            CacheError,
+            TimeoutError,
+            EthereumClientError,
+            CoinGeckoError,
+            GoogleSheetsError,
+            UserInputError,
+            CommandLineError,
         ]
 
         for error_class in error_classes:
@@ -679,7 +655,7 @@ class TestErrorContextHandling:
             "wallet_address": "0x123abc",
             "timestamp": datetime.now().isoformat(),
             "batch_id": "batch_001",
-            "retry_count": 3
+            "retry_count": 3,
         }
 
         error = WalletTrackerError("Test error", context=context)
@@ -699,11 +675,7 @@ class TestErrorContextHandling:
         original = ValueError("Original message")
         context = {"existing_key": "existing_value"}
 
-        error = WalletTrackerError(
-            "Wrapper error",
-            context=context,
-            original_error=original
-        )
+        error = WalletTrackerError("Wrapper error", context=context, original_error=original)
 
         # Test that original context is preserved
         assert error.context["existing_key"] == "existing_value"

@@ -29,12 +29,12 @@ class WalletProcessor:
     """Core wallet analysis processor."""
 
     def __init__(
-            self,
-            config: AppConfig,
-            ethereum_client: EthereumClient,
-            coingecko_client: CoinGeckoClient,
-            sheets_client: GoogleSheetsClient,
-            cache_manager: CacheManager,
+        self,
+        config: AppConfig,
+        ethereum_client: EthereumClient,
+        coingecko_client: CoinGeckoClient,
+        sheets_client: GoogleSheetsClient,
+        cache_manager: CacheManager,
     ):
         """Initialize wallet processor.
 
@@ -64,14 +64,14 @@ class WalletProcessor:
         }
 
     async def process_wallets_from_sheets(
-            self,
-            spreadsheet_id: str,
-            input_range: str = "A:B",
-            output_range: str = "A1",
-            input_worksheet: str | None = None,
-            output_worksheet: str | None = None,
-            skip_header: bool = True,
-            include_summary: bool = True,
+        self,
+        spreadsheet_id: str,
+        input_range: str = "A:B",
+        output_range: str = "A1",
+        input_worksheet: str | None = None,
+        output_worksheet: str | None = None,
+        skip_header: bool = True,
+        include_summary: bool = True,
     ) -> dict[str, Any]:
         """Process wallets from Google Sheets input.
 
@@ -195,8 +195,7 @@ class WalletProcessor:
             raise WalletProcessorError(f"Wallet processing failed: {e}") from e
 
     async def process_wallet_list(
-            self,
-            wallet_addresses: list[dict[str, str]]
+        self, wallet_addresses: list[dict[str, str]]
     ) -> list[Any]:  # Should be list[WalletResult] but importing would cause circular import
         """Process a list of wallet addresses.
 
@@ -213,7 +212,7 @@ class WalletProcessor:
 
         # Process wallets in batches
         for i in range(0, len(wallet_addresses), batch_size):
-            batch = wallet_addresses[i:i + batch_size]
+            batch = wallet_addresses[i : i + batch_size]
             batch_number = (i // batch_size) + 1
             total_batches = (len(wallet_addresses) + batch_size - 1) // batch_size
 
@@ -229,8 +228,7 @@ class WalletProcessor:
         return results
 
     async def _process_wallet_batch(
-            self,
-            wallet_batch: list[dict[str, str]]
+        self, wallet_batch: list[dict[str, str]]
     ) -> list[Any]:  # Should be list[WalletResult]
         """Process a batch of wallets concurrently.
 
@@ -264,18 +262,13 @@ class WalletProcessor:
         return valid_results
 
     async def _process_single_wallet_with_semaphore(
-            self,
-            semaphore: asyncio.Semaphore,
-            wallet_data: dict[str, str]
+        self, semaphore: asyncio.Semaphore, wallet_data: dict[str, str]
     ) -> Any | None:  # Should be WalletResult | None
         """Process a single wallet with semaphore for concurrency control."""
         async with semaphore:
             return await self._process_single_wallet(wallet_data)
 
-    async def _process_single_wallet(
-            self,
-            wallet_data: dict[str, str]
-    ) -> Any | None:  # Should be WalletResult | None
+    async def _process_single_wallet(self, wallet_data: dict[str, str]) -> Any | None:  # Should be WalletResult | None
         """Process a single wallet address.
 
         Args:
@@ -323,10 +316,7 @@ class WalletProcessor:
             self._stats["wallets_processed"] += 1
             self._stats["total_value_usd"] += result.total_value_usd
 
-            logger.debug(
-                f"✅ Processed wallet: {address[:10]}...{address[-6:]} "
-                f"(${result.total_value_usd:,.2f})"
-            )
+            logger.debug(f"✅ Processed wallet: {address[:10]}...{address[-6:]} (${result.total_value_usd:,.2f})")
 
             # Add delay to respect rate limits
             await asyncio.sleep(self.config.processing.request_delay)
@@ -447,16 +437,16 @@ class WalletProcessor:
         logger.info("🧹 Cleaning up wallet processor resources")
 
         # Close clients
-        if hasattr(self.ethereum_client, 'close'):
+        if hasattr(self.ethereum_client, "close"):
             logger.info("... closing ethereum client")
             await self.ethereum_client.close()
 
-        if hasattr(self.coingecko_client, 'close'):
+        if hasattr(self.coingecko_client, "close"):
             logger.info("... closing coingecko client")
             await self.coingecko_client.close()
 
         # Close cache manager
-        if hasattr(self.cache_manager, 'close'):
+        if hasattr(self.cache_manager, "close"):
             logger.info("... closing cache_manager client")
             await self.cache_manager.close()
 

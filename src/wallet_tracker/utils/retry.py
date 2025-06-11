@@ -6,16 +6,17 @@ import logging
 import random
 import time
 from abc import ABC, abstractmethod
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class BackoffStrategy(Enum):
     """Backoff strategies for retry delays."""
+
     FIXED = "fixed"
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
@@ -27,7 +28,7 @@ class BackoffStrategy(Enum):
 class RetryExhaustedError(Exception):
     """Raised when retry attempts are exhausted."""
 
-    def __init__(self, message: str, last_exception: Optional[Exception] = None):
+    def __init__(self, message: str, last_exception: Exception | None = None):
         super().__init__(message)
         self.last_exception = last_exception
 
@@ -35,6 +36,7 @@ class RetryExhaustedError(Exception):
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_attempts: int = 3
     delay: float = 1.0
     backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL
@@ -42,11 +44,11 @@ class RetryConfig:
     max_delay: float = 60.0
     jitter: bool = True
     jitter_range: float = 0.1
-    exceptions: Optional[List[Type[Exception]]] = None
-    retry_condition: Optional[Callable] = None
-    before_retry: Optional[Callable] = None
-    after_retry: Optional[Callable] = None
-    on_final_failure: Optional[Callable] = None
+    exceptions: list[type[Exception]] | None = None
+    retry_condition: Callable | None = None
+    before_retry: Callable | None = None
+    after_retry: Callable | None = None
+    on_final_failure: Callable | None = None
 
 
 class DelayStrategy(ABC):
@@ -84,12 +86,7 @@ class FixedDelayStrategy(DelayStrategy):
 class ExponentialBackoffStrategy(DelayStrategy):
     """Exponential backoff delay strategy."""
 
-    def __init__(
-            self,
-            initial_delay: float = 1.0,
-            multiplier: float = 2.0,
-            max_delay: float = 60.0
-    ):
+    def __init__(self, initial_delay: float = 1.0, multiplier: float = 2.0, max_delay: float = 60.0):
         """Initialize exponential backoff strategy.
 
         Args:
@@ -110,12 +107,7 @@ class ExponentialBackoffStrategy(DelayStrategy):
 class LinearBackoffStrategy(DelayStrategy):
     """Linear backoff delay strategy."""
 
-    def __init__(
-            self,
-            initial_delay: float = 1.0,
-            increment: float = 1.0,
-            max_delay: float = 60.0
-    ):
+    def __init__(self, initial_delay: float = 1.0, increment: float = 1.0, max_delay: float = 60.0):
         """Initialize linear backoff strategy.
 
         Args:
@@ -201,7 +193,7 @@ class RetryCondition(ABC):
 class ExceptionBasedCondition(RetryCondition):
     """Retry condition based on exception types."""
 
-    def __init__(self, exceptions: List[Type[Exception]]):
+    def __init__(self, exceptions: list[type[Exception]]):
         """Initialize exception-based condition.
 
         Args:
@@ -233,7 +225,7 @@ class AttemptBasedCondition(RetryCondition):
 class CombinedCondition(RetryCondition):
     """Combined retry condition using multiple conditions."""
 
-    def __init__(self, conditions: List[RetryCondition]):
+    def __init__(self, conditions: list[RetryCondition]):
         """Initialize combined condition.
 
         Args:
@@ -266,19 +258,19 @@ class Retry:
     """Retry context manager and utility."""
 
     def __init__(
-            self,
-            max_attempts: int = 3,
-            delay: float = 1.0,
-            backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
-            multiplier: float = 2.0,
-            max_delay: float = 60.0,
-            jitter: bool = True,
-            jitter_range: float = 0.1,
-            exceptions: Optional[List[Type[Exception]]] = None,
-            retry_condition: Optional[Callable] = None,
-            before_retry: Optional[Callable] = None,
-            after_retry: Optional[Callable] = None,
-            on_final_failure: Optional[Callable] = None
+        self,
+        max_attempts: int = 3,
+        delay: float = 1.0,
+        backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
+        multiplier: float = 2.0,
+        max_delay: float = 60.0,
+        jitter: bool = True,
+        jitter_range: float = 0.1,
+        exceptions: list[type[Exception]] | None = None,
+        retry_condition: Callable | None = None,
+        before_retry: Callable | None = None,
+        after_retry: Callable | None = None,
+        on_final_failure: Callable | None = None,
     ):
         """Initialize retry manager.
 
@@ -314,11 +306,7 @@ class Retry:
 
         # State
         self.current_attempt = 0
-        self._stats = {
-            "total_attempts": 0,
-            "success": False,
-            "last_exception": None
-        }
+        self._stats = {"total_attempts": 0, "success": False, "last_exception": None}
 
         # Initialize delay strategy
         self._delay_strategy = self._create_delay_strategy()
@@ -428,11 +416,10 @@ class Retry:
 
             # Raise RetryExhaustedError
             raise RetryExhaustedError(
-                f"Retry exhausted after {self.current_attempt} attempts. Last exception: {exc_val}",
-                exc_val
+                f"Retry exhausted after {self.current_attempt} attempts. Last exception: {exc_val}", exc_val
             ) from exc_val
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get retry statistics."""
         return self._stats.copy()
 
@@ -440,13 +427,7 @@ class Retry:
 class RetryableOperation:
     """Wrapper for retryable operations."""
 
-    def __init__(
-            self,
-            function: Callable,
-            max_attempts: int = 3,
-            delay: float = 1.0,
-            **retry_kwargs
-    ):
+    def __init__(self, function: Callable, max_attempts: int = 3, delay: float = 1.0, **retry_kwargs):
         """Initialize retryable operation.
 
         Args:
@@ -478,11 +459,7 @@ class RetryableOperation:
         Raises:
             RetryExhaustedError: If all retry attempts fail
         """
-        retry_manager = Retry(
-            max_attempts=self.max_attempts,
-            delay=self.delay,
-            **self.retry_kwargs
-        )
+        retry_manager = Retry(max_attempts=self.max_attempts, delay=self.delay, **self.retry_kwargs)
 
         while True:
             try:
@@ -501,32 +478,32 @@ class RetryableOperation:
                 self.last_exception = retry_manager._stats["last_exception"]
                 raise
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get operation statistics."""
         return {
             "max_attempts": self.max_attempts,
             "attempt_count": self.attempt_count,
             "success": self.last_exception is None,
             "last_result": self.last_result,
-            "last_exception": self.last_exception
+            "last_exception": self.last_exception,
         }
 
 
 def retry(
-        max_attempts: int = 3,
-        delay: float = 1.0,
-        backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
-        multiplier: float = 2.0,
-        max_delay: float = 60.0,
-        jitter: bool = True,
-        jitter_range: float = 0.1,
-        exceptions: Optional[List[Type[Exception]]] = None,
-        retry_condition: Optional[Callable] = None,
-        before_retry: Optional[Callable] = None,
-        after_retry: Optional[Callable] = None,
-        on_final_failure: Optional[Callable] = None,
-        metrics: Optional['RetryMetrics'] = None,
-        alerting: Optional['RetryAlerting'] = None
+    max_attempts: int = 3,
+    delay: float = 1.0,
+    backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
+    multiplier: float = 2.0,
+    max_delay: float = 60.0,
+    jitter: bool = True,
+    jitter_range: float = 0.1,
+    exceptions: list[type[Exception]] | None = None,
+    retry_condition: Callable | None = None,
+    before_retry: Callable | None = None,
+    after_retry: Callable | None = None,
+    on_final_failure: Callable | None = None,
+    metrics: Optional["RetryMetrics"] = None,
+    alerting: Optional["RetryAlerting"] = None,
 ):
     """Decorator for adding retry functionality to functions.
 
@@ -552,6 +529,7 @@ def retry(
 
     def decorator(func: Callable) -> Callable:
         if asyncio.iscoroutinefunction(func):
+
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 retry_manager = Retry(
@@ -566,7 +544,7 @@ def retry(
                     retry_condition=retry_condition,
                     before_retry=before_retry,
                     after_retry=after_retry,
-                    on_final_failure=on_final_failure
+                    on_final_failure=on_final_failure,
                 )
 
                 start_time = time.time()
@@ -584,7 +562,7 @@ def retry(
                                         func.__name__,
                                         attempts=retry_manager.current_attempt + 1,
                                         duration=duration,
-                                        success=True
+                                        success=True,
                                     )
 
                                 return result
@@ -597,7 +575,7 @@ def retry(
                                     func.__name__,
                                     attempts=retry_manager.current_attempt,
                                     duration=duration,
-                                    success=False
+                                    success=False,
                                 )
 
                             # Check alerting
@@ -606,21 +584,17 @@ def retry(
 
                             raise e.last_exception or e
 
-                except Exception as e:
+                except Exception:
                     # Unexpected error
                     if metrics:
                         duration = time.time() - start_time
-                        metrics.record_operation(
-                            func.__name__,
-                            attempts=1,
-                            duration=duration,
-                            success=False
-                        )
+                        metrics.record_operation(func.__name__, attempts=1, duration=duration, success=False)
                     raise
 
             return async_wrapper
 
         else:
+
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 # Convert sync function to async and run
@@ -645,13 +619,7 @@ class RetryMetrics:
         self._failed_operations = 0
         self._total_attempts = 0
 
-    def record_operation(
-            self,
-            operation_name: str,
-            attempts: int,
-            duration: float,
-            success: bool
-    ):
+    def record_operation(self, operation_name: str, attempts: int, duration: float, success: bool):
         """Record retry operation metrics.
 
         Args:
@@ -668,7 +636,7 @@ class RetryMetrics:
                 "total_attempts": 0,
                 "total_duration": 0.0,
                 "attempts_list": [],
-                "durations_list": []
+                "durations_list": [],
             }
 
         op_stats = self._operations[operation_name]
@@ -688,7 +656,7 @@ class RetryMetrics:
         self._total_operations += 1
         self._total_attempts += attempts
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get retry metrics statistics."""
         return {
             "total_operations": self._total_operations,
@@ -697,7 +665,7 @@ class RetryMetrics:
             "total_attempts": self._total_attempts,
             "average_attempts": self._total_attempts / self._total_operations if self._total_operations > 0 else 0,
             "success_rate": self._successful_operations / self._total_operations if self._total_operations > 0 else 0,
-            "operations": self._operations
+            "operations": self._operations,
         }
 
 
@@ -708,13 +676,7 @@ class RetryPerformanceTracker:
         """Initialize performance tracker."""
         self._performance_data = {}
 
-    def record_operation(
-            self,
-            operation_name: str,
-            attempts: int,
-            duration: float,
-            success: bool
-    ):
+    def record_operation(self, operation_name: str, attempts: int, duration: float, success: bool):
         """Record operation performance.
 
         Args:
@@ -728,16 +690,13 @@ class RetryPerformanceTracker:
                 "operations": [],
                 "total_operations": 0,
                 "successful_operations": 0,
-                "failed_operations": 0
+                "failed_operations": 0,
             }
 
         data = self._performance_data[operation_name]
-        data["operations"].append({
-            "attempts": attempts,
-            "duration": duration,
-            "success": success,
-            "timestamp": time.time()
-        })
+        data["operations"].append(
+            {"attempts": attempts, "duration": duration, "success": success, "timestamp": time.time()}
+        )
 
         data["total_operations"] += 1
         if success:
@@ -745,7 +704,7 @@ class RetryPerformanceTracker:
         else:
             data["failed_operations"] += 1
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """Get performance report."""
         report = {}
 
@@ -767,7 +726,7 @@ class RetryPerformanceTracker:
                 "min_attempts": min(attempts),
                 "max_attempts": max(attempts),
                 "min_duration": min(durations),
-                "max_duration": max(durations)
+                "max_duration": max(durations),
             }
 
         return report
@@ -776,11 +735,7 @@ class RetryPerformanceTracker:
 class RetryAlerting:
     """Alerting system for retry failures."""
 
-    def __init__(
-            self,
-            failure_threshold: int = 5,
-            alert_handler: Optional[Callable] = None
-    ):
+    def __init__(self, failure_threshold: int = 5, alert_handler: Callable | None = None):
         """Initialize retry alerting.
 
         Args:
@@ -810,7 +765,7 @@ class RetryAlerting:
                     "operation": operation_name,
                     "failure_count": self._failure_counts[operation_name],
                     "threshold": self.failure_threshold,
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
 
                 try:

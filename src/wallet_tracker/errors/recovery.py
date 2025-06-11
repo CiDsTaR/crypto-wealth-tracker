@@ -1,19 +1,12 @@
 """Recovery mechanisms and checkpoint system for error handling."""
 
-import asyncio
 import json
 import logging
-import pickle
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from .exceptions import (
-    ErrorCategory,
-    ErrorSeverity,
-    RecoveryStrategy,
-    WalletTrackerError
-)
+from .exceptions import RecoveryStrategy, WalletTrackerError
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +15,11 @@ class CheckpointData:
     """Represents a checkpoint with state and metadata."""
 
     def __init__(
-            self,
-            checkpoint_id: str,
-            operation_name: str,
-            state_data: Dict[str, Any],
-            metadata: Optional[Dict[str, Any]] = None
+        self,
+        checkpoint_id: str,
+        operation_name: str,
+        state_data: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
     ):
         self.checkpoint_id = checkpoint_id
         self.operation_name = operation_name
@@ -35,28 +28,28 @@ class CheckpointData:
         self.created_at = datetime.now(UTC)
         self.restored_count = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert checkpoint to dictionary for serialization."""
         return {
-            'checkpoint_id': self.checkpoint_id,
-            'operation_name': self.operation_name,
-            'state_data': self.state_data,
-            'metadata': self.metadata,
-            'created_at': self.created_at.isoformat(),
-            'restored_count': self.restored_count
+            "checkpoint_id": self.checkpoint_id,
+            "operation_name": self.operation_name,
+            "state_data": self.state_data,
+            "metadata": self.metadata,
+            "created_at": self.created_at.isoformat(),
+            "restored_count": self.restored_count,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'CheckpointData':
+    def from_dict(cls, data: dict[str, Any]) -> "CheckpointData":
         """Create checkpoint from dictionary."""
         checkpoint = cls(
-            checkpoint_id=data['checkpoint_id'],
-            operation_name=data['operation_name'],
-            state_data=data['state_data'],
-            metadata=data.get('metadata', {})
+            checkpoint_id=data["checkpoint_id"],
+            operation_name=data["operation_name"],
+            state_data=data["state_data"],
+            metadata=data.get("metadata", {}),
         )
-        checkpoint.created_at = datetime.fromisoformat(data['created_at'])
-        checkpoint.restored_count = data.get('restored_count', 0)
+        checkpoint.created_at = datetime.fromisoformat(data["created_at"])
+        checkpoint.restored_count = data.get("restored_count", 0)
         return checkpoint
 
 
@@ -72,11 +65,11 @@ class CheckpointManager:
     """
 
     def __init__(
-            self,
-            storage_path: Optional[Path] = None,
-            max_checkpoints_per_operation: int = 10,
-            checkpoint_retention_hours: int = 48,
-            auto_cleanup: bool = True
+        self,
+        storage_path: Path | None = None,
+        max_checkpoints_per_operation: int = 10,
+        checkpoint_retention_hours: int = 48,
+        auto_cleanup: bool = True,
     ):
         """Initialize checkpoint manager.
 
@@ -92,18 +85,18 @@ class CheckpointManager:
         self.auto_cleanup = auto_cleanup
 
         # In-memory checkpoint storage
-        self._checkpoints: Dict[str, CheckpointData] = {}
+        self._checkpoints: dict[str, CheckpointData] = {}
 
         # Create storage directory if using file storage
         if self.storage_path:
             self.storage_path.mkdir(parents=True, exist_ok=True)
 
     async def create_checkpoint(
-            self,
-            operation_name: str,
-            state_data: Dict[str, Any],
-            checkpoint_id: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None
+        self,
+        operation_name: str,
+        state_data: dict[str, Any],
+        checkpoint_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Create a checkpoint.
 
@@ -120,10 +113,7 @@ class CheckpointManager:
             checkpoint_id = f"{operation_name}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S_%f')}"
 
         checkpoint = CheckpointData(
-            checkpoint_id=checkpoint_id,
-            operation_name=operation_name,
-            state_data=state_data,
-            metadata=metadata
+            checkpoint_id=checkpoint_id, operation_name=operation_name, state_data=state_data, metadata=metadata
         )
 
         # Store in memory
@@ -140,7 +130,7 @@ class CheckpointManager:
         logger.debug(f"Created checkpoint: {checkpoint_id} for operation: {operation_name}")
         return checkpoint_id
 
-    async def restore_checkpoint(self, checkpoint_id: str) -> Optional[CheckpointData]:
+    async def restore_checkpoint(self, checkpoint_id: str) -> CheckpointData | None:
         """Restore a checkpoint by ID.
 
         Args:
@@ -169,7 +159,7 @@ class CheckpointManager:
         logger.warning(f"Checkpoint not found: {checkpoint_id}")
         return None
 
-    async def get_latest_checkpoint(self, operation_name: str) -> Optional[CheckpointData]:
+    async def get_latest_checkpoint(self, operation_name: str) -> CheckpointData | None:
         """Get the latest checkpoint for an operation.
 
         Args:
@@ -179,18 +169,12 @@ class CheckpointManager:
             Latest checkpoint or None if not found
         """
         # Find all checkpoints for the operation
-        operation_checkpoints = [
-            cp for cp in self._checkpoints.values()
-            if cp.operation_name == operation_name
-        ]
+        operation_checkpoints = [cp for cp in self._checkpoints.values() if cp.operation_name == operation_name]
 
         # Load from file if storage is configured and memory is empty
         if not operation_checkpoints and self.storage_path:
             await self._load_all_checkpoints()
-            operation_checkpoints = [
-                cp for cp in self._checkpoints.values()
-                if cp.operation_name == operation_name
-            ]
+            operation_checkpoints = [cp for cp in self._checkpoints.values() if cp.operation_name == operation_name]
 
         if not operation_checkpoints:
             return None
@@ -200,10 +184,7 @@ class CheckpointManager:
         logger.info(f"Found latest checkpoint for {operation_name}: {latest.checkpoint_id}")
         return latest
 
-    async def list_checkpoints(
-            self,
-            operation_name: Optional[str] = None
-    ) -> List[CheckpointData]:
+    async def list_checkpoints(self, operation_name: str | None = None) -> list[CheckpointData]:
         """List available checkpoints.
 
         Args:
@@ -252,10 +233,7 @@ class CheckpointManager:
 
         return deleted
 
-    async def cleanup_old_checkpoints(
-            self,
-            operation_name: Optional[str] = None
-    ) -> int:
+    async def cleanup_old_checkpoints(self, operation_name: str | None = None) -> int:
         """Cleanup old checkpoints.
 
         Args:
@@ -307,8 +285,7 @@ class CheckpointManager:
     async def _cleanup_excess_checkpoints(self, operation_name: str) -> int:
         """Cleanup excess checkpoints for an operation."""
         operation_checkpoints = [
-            (cp_id, cp) for cp_id, cp in self._checkpoints.items()
-            if cp.operation_name == operation_name
+            (cp_id, cp) for cp_id, cp in self._checkpoints.items() if cp.operation_name == operation_name
         ]
 
         if len(operation_checkpoints) <= self.max_checkpoints_per_operation:
@@ -336,12 +313,12 @@ class CheckpointManager:
         file_path = self.storage_path / f"{checkpoint.checkpoint_id}.json"
 
         try:
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(checkpoint.to_dict(), f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save checkpoint to file: {e}")
 
-    async def _load_checkpoint_from_file(self, checkpoint_id: str) -> Optional[CheckpointData]:
+    async def _load_checkpoint_from_file(self, checkpoint_id: str) -> CheckpointData | None:
         """Load checkpoint from file."""
         if not self.storage_path:
             return None
@@ -352,7 +329,7 @@ class CheckpointManager:
             return None
 
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 data = json.load(f)
             return CheckpointData.from_dict(data)
         except Exception as e:
@@ -366,7 +343,7 @@ class CheckpointManager:
 
         for file_path in self.storage_path.glob("*.json"):
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     data = json.load(f)
 
                 checkpoint = CheckpointData.from_dict(data)
@@ -391,14 +368,14 @@ class CheckpointManager:
 
         return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get checkpoint manager statistics."""
         return {
-            'total_checkpoints': len(self._checkpoints),
-            'operations': list(set(cp.operation_name for cp in self._checkpoints.values())),
-            'storage_path': str(self.storage_path) if self.storage_path else None,
-            'retention_hours': self.checkpoint_retention_hours,
-            'max_per_operation': self.max_checkpoints_per_operation
+            "total_checkpoints": len(self._checkpoints),
+            "operations": list(set(cp.operation_name for cp in self._checkpoints.values())),
+            "storage_path": str(self.storage_path) if self.storage_path else None,
+            "retention_hours": self.checkpoint_retention_hours,
+            "max_per_operation": self.max_checkpoints_per_operation,
         }
 
 
@@ -420,14 +397,10 @@ class RecoveryManager:
             checkpoint_manager: Checkpoint manager instance
         """
         self.checkpoint_manager = checkpoint_manager
-        self._recovery_attempts: Dict[str, int] = {}
-        self._recovery_strategies: Dict[RecoveryStrategy, List[callable]] = {}
+        self._recovery_attempts: dict[str, int] = {}
+        self._recovery_strategies: dict[RecoveryStrategy, list[callable]] = {}
 
-    def register_recovery_strategy(
-            self,
-            strategy: RecoveryStrategy,
-            handler: callable
-    ) -> None:
+    def register_recovery_strategy(self, strategy: RecoveryStrategy, handler: callable) -> None:
         """Register a recovery strategy handler.
 
         Args:
@@ -439,11 +412,8 @@ class RecoveryManager:
         self._recovery_strategies[strategy].append(handler)
 
     async def attempt_recovery(
-            self,
-            error: WalletTrackerError,
-            operation_name: str,
-            max_recovery_attempts: int = 3
-    ) -> Optional[CheckpointData]:
+        self, error: WalletTrackerError, operation_name: str, max_recovery_attempts: int = 3
+    ) -> CheckpointData | None:
         """Attempt recovery from a failure.
 
         Args:
@@ -485,11 +455,7 @@ class RecoveryManager:
             logger.warning(f"No recovery strategy available for {strategy}")
             return None
 
-    async def _retry_recovery(
-            self,
-            error: WalletTrackerError,
-            operation_name: str
-    ) -> Optional[CheckpointData]:
+    async def _retry_recovery(self, error: WalletTrackerError, operation_name: str) -> CheckpointData | None:
         """Attempt recovery through retry."""
         logger.info(f"Attempting retry recovery for {operation_name}")
 
@@ -503,11 +469,7 @@ class RecoveryManager:
 
         return checkpoint
 
-    async def _fallback_recovery(
-            self,
-            error: WalletTrackerError,
-            operation_name: str
-    ) -> Optional[CheckpointData]:
+    async def _fallback_recovery(self, error: WalletTrackerError, operation_name: str) -> CheckpointData | None:
         """Attempt recovery through fallback strategy."""
         logger.info(f"Attempting fallback recovery for {operation_name}")
 
@@ -530,20 +492,12 @@ class RecoveryManager:
 
         return None
 
-    async def _skip_recovery(
-            self,
-            error: WalletTrackerError,
-            operation_name: str
-    ) -> Optional[CheckpointData]:
+    async def _skip_recovery(self, error: WalletTrackerError, operation_name: str) -> CheckpointData | None:
         """Attempt recovery by skipping the failed item."""
         logger.info(f"Attempting skip recovery for {operation_name}")
 
         # Create a recovery checkpoint that indicates what to skip
-        skip_metadata = {
-            'recovery_type': 'skip',
-            'skip_reason': error.message,
-            'skip_context': error.context
-        }
+        skip_metadata = {"recovery_type": "skip", "skip_reason": error.message, "skip_context": error.context}
 
         # Try to get the latest checkpoint and modify it
         checkpoint = await self.checkpoint_manager.get_latest_checkpoint(operation_name)
@@ -553,18 +507,14 @@ class RecoveryManager:
             new_checkpoint_id = await self.checkpoint_manager.create_checkpoint(
                 operation_name=operation_name,
                 state_data=checkpoint.state_data,
-                metadata={**checkpoint.metadata, **skip_metadata}
+                metadata={**checkpoint.metadata, **skip_metadata},
             )
 
             return await self.checkpoint_manager.restore_checkpoint(new_checkpoint_id)
 
         return None
 
-    async def _checkpoint_recovery(
-            self,
-            error: WalletTrackerError,
-            operation_name: str
-    ) -> Optional[CheckpointData]:
+    async def _checkpoint_recovery(self, error: WalletTrackerError, operation_name: str) -> CheckpointData | None:
         """Attempt recovery from the latest checkpoint."""
         logger.info(f"Attempting checkpoint recovery for {operation_name}")
 
@@ -590,7 +540,7 @@ class RecoveryManager:
         logger.warning(f"No checkpoint available for recovery: {operation_name}")
         return None
 
-    def clear_recovery_attempts(self, operation_name: Optional[str] = None) -> None:
+    def clear_recovery_attempts(self, operation_name: str | None = None) -> None:
         """Clear recovery attempt counters.
 
         Args:
@@ -605,14 +555,12 @@ class RecoveryManager:
 
         logger.info("Recovery attempt counters cleared")
 
-    def get_recovery_stats(self) -> Dict[str, Any]:
+    def get_recovery_stats(self) -> dict[str, Any]:
         """Get recovery statistics."""
         return {
-            'total_recovery_attempts': len(self._recovery_attempts),
-            'recovery_attempts_by_operation': {
-                key: count for key, count in self._recovery_attempts.items()
-            },
-            'registered_strategies': list(self._recovery_strategies.keys())
+            "total_recovery_attempts": len(self._recovery_attempts),
+            "recovery_attempts_by_operation": {key: count for key, count in self._recovery_attempts.items()},
+            "registered_strategies": list(self._recovery_strategies.keys()),
         }
 
 
@@ -627,11 +575,11 @@ class ProgressTracker:
     """
 
     def __init__(
-            self,
-            operation_name: str,
-            total_items: int,
-            checkpoint_manager: CheckpointManager,
-            checkpoint_interval: int = 10
+        self,
+        operation_name: str,
+        total_items: int,
+        checkpoint_manager: CheckpointManager,
+        checkpoint_interval: int = 10,
     ):
         """Initialize progress tracker.
 
@@ -651,19 +599,15 @@ class ProgressTracker:
         self.skipped_items = 0
         self.start_time = datetime.now(UTC)
         self.last_checkpoint_time = self.start_time
-        self.last_checkpoint_id: Optional[str] = None
+        self.last_checkpoint_id: str | None = None
 
         # Progress state
-        self.current_batch: List[Any] = []
-        self.processed_batches: List[Dict[str, Any]] = []
-        self.failed_items_list: List[Dict[str, Any]] = []
+        self.current_batch: list[Any] = []
+        self.processed_batches: list[dict[str, Any]] = []
+        self.failed_items_list: list[dict[str, Any]] = []
 
     async def update_progress(
-            self,
-            processed: int = 1,
-            failed: int = 0,
-            skipped: int = 0,
-            item_data: Optional[Dict[str, Any]] = None
+        self, processed: int = 1, failed: int = 0, skipped: int = 0, item_data: dict[str, Any] | None = None
     ) -> None:
         """Update progress counters.
 
@@ -679,11 +623,13 @@ class ProgressTracker:
 
         # Track failed items for recovery
         if failed > 0 and item_data:
-            self.failed_items_list.append({
-                'item_data': item_data,
-                'timestamp': datetime.now(UTC).isoformat(),
-                'error_context': item_data.get('error_context')
-            })
+            self.failed_items_list.append(
+                {
+                    "item_data": item_data,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "error_context": item_data.get("error_context"),
+                }
+            )
 
         # Create checkpoint if interval reached
         if self.processed_items % self.checkpoint_interval == 0:
@@ -692,35 +638,35 @@ class ProgressTracker:
     async def _create_progress_checkpoint(self) -> None:
         """Create a progress checkpoint."""
         checkpoint_data = {
-            'operation_name': self.operation_name,
-            'total_items': self.total_items,
-            'processed_items': self.processed_items,
-            'failed_items': self.failed_items,
-            'skipped_items': self.skipped_items,
-            'start_time': self.start_time.isoformat(),
-            'last_checkpoint_time': datetime.now(UTC).isoformat(),
-            'processed_batches': self.processed_batches,
-            'failed_items_list': self.failed_items_list,
-            'progress_percent': self.get_progress_percent()
+            "operation_name": self.operation_name,
+            "total_items": self.total_items,
+            "processed_items": self.processed_items,
+            "failed_items": self.failed_items,
+            "skipped_items": self.skipped_items,
+            "start_time": self.start_time.isoformat(),
+            "last_checkpoint_time": datetime.now(UTC).isoformat(),
+            "processed_batches": self.processed_batches,
+            "failed_items_list": self.failed_items_list,
+            "progress_percent": self.get_progress_percent(),
         }
 
         metadata = {
-            'checkpoint_type': 'progress',
-            'items_since_last': self.checkpoint_interval,
-            'estimated_completion': self.get_estimated_completion().isoformat() if self.get_estimated_completion() else None
+            "checkpoint_type": "progress",
+            "items_since_last": self.checkpoint_interval,
+            "estimated_completion": self.get_estimated_completion().isoformat()
+            if self.get_estimated_completion()
+            else None,
         }
 
         self.last_checkpoint_id = await self.checkpoint_manager.create_checkpoint(
-            operation_name=self.operation_name,
-            state_data=checkpoint_data,
-            metadata=metadata
+            operation_name=self.operation_name, state_data=checkpoint_data, metadata=metadata
         )
 
         self.last_checkpoint_time = datetime.now(UTC)
 
         logger.debug(f"Progress checkpoint created: {self.last_checkpoint_id} ({self.get_progress_percent():.1f}%)")
 
-    async def restore_from_checkpoint(self, checkpoint_id: Optional[str] = None) -> bool:
+    async def restore_from_checkpoint(self, checkpoint_id: str | None = None) -> bool:
         """Restore progress from checkpoint.
 
         Args:
@@ -741,20 +687,21 @@ class ProgressTracker:
         # Restore progress state
         state_data = checkpoint.state_data
 
-        self.total_items = state_data.get('total_items', self.total_items)
-        self.processed_items = state_data.get('processed_items', 0)
-        self.failed_items = state_data.get('failed_items', 0)
-        self.skipped_items = state_data.get('skipped_items', 0)
-        self.processed_batches = state_data.get('processed_batches', [])
-        self.failed_items_list = state_data.get('failed_items_list', [])
+        self.total_items = state_data.get("total_items", self.total_items)
+        self.processed_items = state_data.get("processed_items", 0)
+        self.failed_items = state_data.get("failed_items", 0)
+        self.skipped_items = state_data.get("skipped_items", 0)
+        self.processed_batches = state_data.get("processed_batches", [])
+        self.failed_items_list = state_data.get("failed_items_list", [])
 
-        if 'start_time' in state_data:
-            self.start_time = datetime.fromisoformat(state_data['start_time'])
+        if "start_time" in state_data:
+            self.start_time = datetime.fromisoformat(state_data["start_time"])
 
         self.last_checkpoint_id = checkpoint.checkpoint_id
 
         logger.info(
-            f"Progress restored from checkpoint: {checkpoint.checkpoint_id} ({self.get_progress_percent():.1f}%)")
+            f"Progress restored from checkpoint: {checkpoint.checkpoint_id} ({self.get_progress_percent():.1f}%)"
+        )
         return True
 
     def get_progress_percent(self) -> float:
@@ -765,7 +712,7 @@ class ProgressTracker:
         total_processed = self.processed_items + self.failed_items + self.skipped_items
         return (total_processed / self.total_items) * 100
 
-    def get_estimated_completion(self) -> Optional[datetime]:
+    def get_estimated_completion(self) -> datetime | None:
         """Get estimated completion time."""
         if self.processed_items == 0:
             return None
@@ -797,29 +744,30 @@ class ProgressTracker:
 
         return (self.failed_items / total_attempted) * 100
 
-    def get_progress_summary(self) -> Dict[str, Any]:
+    def get_progress_summary(self) -> dict[str, Any]:
         """Get progress summary."""
         return {
-            'operation_name': self.operation_name,
-            'total_items': self.total_items,
-            'processed_items': self.processed_items,
-            'failed_items': self.failed_items,
-            'skipped_items': self.skipped_items,
-            'progress_percent': self.get_progress_percent(),
-            'processing_rate': self.get_processing_rate(),
-            'failure_rate': self.get_failure_rate(),
-            'estimated_completion': self.get_estimated_completion().isoformat() if self.get_estimated_completion() else None,
-            'elapsed_time': (datetime.now(UTC) - self.start_time).total_seconds(),
-            'last_checkpoint_id': self.last_checkpoint_id
+            "operation_name": self.operation_name,
+            "total_items": self.total_items,
+            "processed_items": self.processed_items,
+            "failed_items": self.failed_items,
+            "skipped_items": self.skipped_items,
+            "progress_percent": self.get_progress_percent(),
+            "processing_rate": self.get_processing_rate(),
+            "failure_rate": self.get_failure_rate(),
+            "estimated_completion": self.get_estimated_completion().isoformat()
+            if self.get_estimated_completion()
+            else None,
+            "elapsed_time": (datetime.now(UTC) - self.start_time).total_seconds(),
+            "last_checkpoint_id": self.last_checkpoint_id,
         }
 
 
 # Utility functions and decorators
 
+
 def with_checkpointing(
-        checkpoint_manager: CheckpointManager,
-        operation_name: str,
-        checkpoint_interval: Optional[int] = None
+    checkpoint_manager: CheckpointManager, operation_name: str, checkpoint_interval: int | None = None
 ):
     """Decorator to add automatic checkpointing to functions.
 
@@ -832,16 +780,16 @@ def with_checkpointing(
     def decorator(func):
         async def wrapper(*args, **kwargs):
             # Extract or create progress tracker
-            tracker = kwargs.get('progress_tracker')
+            tracker = kwargs.get("progress_tracker")
             if not tracker and checkpoint_interval:
-                total_items = kwargs.get('total_items', 1)
+                total_items = kwargs.get("total_items", 1)
                 tracker = ProgressTracker(
                     operation_name=operation_name,
                     total_items=total_items,
                     checkpoint_manager=checkpoint_manager,
-                    checkpoint_interval=checkpoint_interval
+                    checkpoint_interval=checkpoint_interval,
                 )
-                kwargs['progress_tracker'] = tracker
+                kwargs["progress_tracker"] = tracker
 
             try:
                 result = await func(*args, **kwargs)
@@ -852,7 +800,7 @@ def with_checkpointing(
 
                 return result
 
-            except Exception as e:
+            except Exception:
                 # Create checkpoint on failure
                 if tracker:
                     await tracker._create_progress_checkpoint()
@@ -864,11 +812,11 @@ def with_checkpointing(
 
 
 async def create_recovery_context(
-        operation_name: str,
-        checkpoint_manager: CheckpointManager,
-        recovery_manager: RecoveryManager,
-        auto_restore: bool = True
-) -> Dict[str, Any]:
+    operation_name: str,
+    checkpoint_manager: CheckpointManager,
+    recovery_manager: RecoveryManager,
+    auto_restore: bool = True,
+) -> dict[str, Any]:
     """Create a recovery context for an operation.
 
     Args:
@@ -881,19 +829,19 @@ async def create_recovery_context(
         Recovery context dictionary
     """
     context = {
-        'operation_name': operation_name,
-        'checkpoint_manager': checkpoint_manager,
-        'recovery_manager': recovery_manager,
-        'recovered_from_checkpoint': False,
-        'checkpoint_data': None
+        "operation_name": operation_name,
+        "checkpoint_manager": checkpoint_manager,
+        "recovery_manager": recovery_manager,
+        "recovered_from_checkpoint": False,
+        "checkpoint_data": None,
     }
 
     if auto_restore:
         # Try to restore from latest checkpoint
         checkpoint = await checkpoint_manager.get_latest_checkpoint(operation_name)
         if checkpoint:
-            context['recovered_from_checkpoint'] = True
-            context['checkpoint_data'] = checkpoint
+            context["recovered_from_checkpoint"] = True
+            context["checkpoint_data"] = checkpoint
             logger.info(f"Auto-restored from checkpoint: {checkpoint.checkpoint_id}")
 
     return context
@@ -907,13 +855,13 @@ class RecoverySession:
     """
 
     def __init__(
-            self,
-            operation_name: str,
-            checkpoint_manager: CheckpointManager,
-            recovery_manager: RecoveryManager,
-            total_items: Optional[int] = None,
-            checkpoint_interval: int = 10,
-            auto_restore: bool = True
+        self,
+        operation_name: str,
+        checkpoint_manager: CheckpointManager,
+        recovery_manager: RecoveryManager,
+        total_items: int | None = None,
+        checkpoint_interval: int = 10,
+        auto_restore: bool = True,
     ):
         """Initialize recovery session.
 
@@ -932,9 +880,9 @@ class RecoverySession:
         self.checkpoint_interval = checkpoint_interval
         self.auto_restore = auto_restore
 
-        self.progress_tracker: Optional[ProgressTracker] = None
-        self.recovery_context: Dict[str, Any] = {}
-        self.session_checkpoint_id: Optional[str] = None
+        self.progress_tracker: ProgressTracker | None = None
+        self.recovery_context: dict[str, Any] = {}
+        self.session_checkpoint_id: str | None = None
 
     async def __aenter__(self):
         """Enter recovery session."""
@@ -943,7 +891,7 @@ class RecoverySession:
             operation_name=self.operation_name,
             checkpoint_manager=self.checkpoint_manager,
             recovery_manager=self.recovery_manager,
-            auto_restore=self.auto_restore
+            auto_restore=self.auto_restore,
         )
 
         # Create progress tracker if total items specified
@@ -952,25 +900,25 @@ class RecoverySession:
                 operation_name=self.operation_name,
                 total_items=self.total_items,
                 checkpoint_manager=self.checkpoint_manager,
-                checkpoint_interval=self.checkpoint_interval
+                checkpoint_interval=self.checkpoint_interval,
             )
 
             # Restore progress if recovered from checkpoint
-            if self.recovery_context['recovered_from_checkpoint']:
+            if self.recovery_context["recovered_from_checkpoint"]:
                 await self.progress_tracker.restore_from_checkpoint()
 
         # Create session start checkpoint
         session_data = {
-            'session_start': datetime.now(UTC).isoformat(),
-            'operation_name': self.operation_name,
-            'total_items': self.total_items,
-            'auto_restore': self.auto_restore
+            "session_start": datetime.now(UTC).isoformat(),
+            "operation_name": self.operation_name,
+            "total_items": self.total_items,
+            "auto_restore": self.auto_restore,
         }
 
         self.session_checkpoint_id = await self.checkpoint_manager.create_checkpoint(
             operation_name=f"{self.operation_name}_session",
             state_data=session_data,
-            metadata={'checkpoint_type': 'session_start'}
+            metadata={"checkpoint_type": "session_start"},
         )
 
         logger.info(f"Recovery session started: {self.operation_name}")
@@ -980,20 +928,20 @@ class RecoverySession:
         """Exit recovery session."""
         # Create session end checkpoint
         session_data = {
-            'session_end': datetime.now(UTC).isoformat(),
-            'operation_name': self.operation_name,
-            'completed_successfully': exc_type is None,
-            'error_type': exc_type.__name__ if exc_type else None,
-            'error_message': str(exc_val) if exc_val else None
+            "session_end": datetime.now(UTC).isoformat(),
+            "operation_name": self.operation_name,
+            "completed_successfully": exc_type is None,
+            "error_type": exc_type.__name__ if exc_type else None,
+            "error_message": str(exc_val) if exc_val else None,
         }
 
         if self.progress_tracker:
-            session_data['final_progress'] = self.progress_tracker.get_progress_summary()
+            session_data["final_progress"] = self.progress_tracker.get_progress_summary()
 
         await self.checkpoint_manager.create_checkpoint(
             operation_name=f"{self.operation_name}_session",
             state_data=session_data,
-            metadata={'checkpoint_type': 'session_end'}
+            metadata={"checkpoint_type": "session_end"},
         )
 
         # Cleanup on successful completion
@@ -1003,7 +951,7 @@ class RecoverySession:
 
         logger.info(f"Recovery session ended: {self.operation_name} (success: {exc_type is None})")
 
-    async def checkpoint(self, state_data: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> str:
+    async def checkpoint(self, state_data: dict[str, Any], metadata: dict[str, Any] | None = None) -> str:
         """Create a manual checkpoint.
 
         Args:
@@ -1014,9 +962,7 @@ class RecoverySession:
             Checkpoint ID
         """
         return await self.checkpoint_manager.create_checkpoint(
-            operation_name=self.operation_name,
-            state_data=state_data,
-            metadata=metadata
+            operation_name=self.operation_name, state_data=state_data, metadata=metadata
         )
 
     async def update_progress(self, processed: int = 1, failed: int = 0, skipped: int = 0, **kwargs) -> None:
@@ -1031,7 +977,7 @@ class RecoverySession:
         if self.progress_tracker:
             await self.progress_tracker.update_progress(processed, failed, skipped, kwargs)
 
-    def get_progress(self) -> Optional[Dict[str, Any]]:
+    def get_progress(self) -> dict[str, Any] | None:
         """Get current progress summary."""
         if self.progress_tracker:
             return self.progress_tracker.get_progress_summary()

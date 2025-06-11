@@ -3,17 +3,14 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
 from wallet_tracker.config import (
-    AppConfig,
     CacheBackend,
     Environment,
-    EthereumConfig,
-    GoogleSheetsConfig,
     Settings,
-    SettingsError,
 )
 
 
@@ -28,20 +25,25 @@ class TestConfigurationValidation:
 
         try:
             # Production with debug enabled should generate warning
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "prod_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "production",
-                "DEBUG": "true",  # This should generate a warning
-                "CACHE_BACKEND": "redis",  # Production should use proper cache
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "prod_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "production",
+                    "DEBUG": "true",  # This should generate a warning
+                    "CACHE_BACKEND": "redis",  # Production should use proper cache
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 validation_result = settings.validate_config()
 
                 assert validation_result["valid"] is True
                 assert len(validation_result["warnings"]) > 0
-                assert any("Debug mode is enabled in production" in warning
-                          for warning in validation_result["warnings"])
+                assert any(
+                    "Debug mode is enabled in production" in warning for warning in validation_result["warnings"]
+                )
 
         finally:
             temp_creds.unlink()
@@ -54,20 +56,23 @@ class TestConfigurationValidation:
 
         try:
             # Development with debug should not generate warnings
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "dev_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "development",
-                "DEBUG": "true",
-                "CACHE_BACKEND": "file",  # File cache OK in development
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "dev_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "development",
+                    "DEBUG": "true",
+                    "CACHE_BACKEND": "file",  # File cache OK in development
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 validation_result = settings.validate_config()
 
                 assert validation_result["valid"] is True
                 # Should have no warnings about debug in development
-                debug_warnings = [w for w in validation_result["warnings"]
-                                if "Debug mode" in w]
+                debug_warnings = [w for w in validation_result["warnings"] if "Debug mode" in w]
                 assert len(debug_warnings) == 0
 
         finally:
@@ -81,11 +86,15 @@ class TestConfigurationValidation:
 
         try:
             # Test RPC URL and API key consistency
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key_123",
-                "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/different_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key_123",
+                    "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/different_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -105,22 +114,29 @@ class TestConfigurationValidation:
 
         try:
             # Test with existing credentials file
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 validation_result = settings.validate_config()
 
                 assert validation_result["valid"] is True
-                assert len([issue for issue in validation_result["issues"]
-                           if "not found" in issue]) == 0
+                assert len([issue for issue in validation_result["issues"] if "not found" in issue]) == 0
 
             # Test with non-existent credentials file
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": "/absolutely/nonexistent/file.json",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": "/absolutely/nonexistent/file.json",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 validation_result = settings.validate_config()
 
@@ -138,13 +154,17 @@ class TestConfigurationValidation:
 
         try:
             # Test with valid URLs
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/test_key",
-                "COINGECKO_BASE_URL": "https://api.coingecko.com/api/v3",
-                "REDIS_URL": "redis://localhost:6379/0",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/test_key",
+                    "COINGECKO_BASE_URL": "https://api.coingecko.com/api/v3",
+                    "REDIS_URL": "redis://localhost:6379/0",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -164,12 +184,16 @@ class TestConfigurationValidation:
 
         try:
             # Redis backend should have Redis URL
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "CACHE_BACKEND": "redis",
-                "REDIS_URL": "redis://localhost:6379/0",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "CACHE_BACKEND": "redis",
+                    "REDIS_URL": "redis://localhost:6379/0",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -177,12 +201,16 @@ class TestConfigurationValidation:
                 assert config.cache.redis_url == "redis://localhost:6379/0"
 
             # File backend should have file cache directory
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "CACHE_BACKEND": "file",
-                "FILE_CACHE_DIR": "/tmp/cache",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "CACHE_BACKEND": "file",
+                    "FILE_CACHE_DIR": "/tmp/cache",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -199,13 +227,17 @@ class TestConfigurationValidation:
             temp_creds = Path(f.name)
 
         try:
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ALCHEMY_RATE_LIMIT": "100",
-                "COINGECKO_RATE_LIMIT": "30",
-                "MAX_CONCURRENT_REQUESTS": "5",  # Should be <= sum of API limits
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ALCHEMY_RATE_LIMIT": "100",
+                    "COINGECKO_RATE_LIMIT": "30",
+                    "MAX_CONCURRENT_REQUESTS": "5",  # Should be <= sum of API limits
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -224,11 +256,15 @@ class TestConfigurationValidation:
 
         try:
             # Development environment
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "development",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "development",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -237,11 +273,15 @@ class TestConfigurationValidation:
                 assert config.processing.batch_size >= 1
 
             # Production environment
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "production",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "production",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -259,12 +299,16 @@ class TestConfigurationValidation:
 
         try:
             # Production should use HTTPS
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "production",
-                "ETHEREUM_RPC_URL": "http://insecure-endpoint.com",  # HTTP in prod
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "production",
+                    "ETHEREUM_RPC_URL": "http://insecure-endpoint.com",  # HTTP in prod
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -284,14 +328,18 @@ class TestConfigurationValidation:
 
         try:
             # High throughput configuration
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "BATCH_SIZE": "100",
-                "MAX_CONCURRENT_REQUESTS": "20",
-                "REQUEST_DELAY": "0.05",
-                "CACHE_TTL_PRICES": "1800",  # 30 minutes
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "BATCH_SIZE": "100",
+                    "MAX_CONCURRENT_REQUESTS": "20",
+                    "REQUEST_DELAY": "0.05",
+                    "CACHE_TTL_PRICES": "1800",  # 30 minutes
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -318,14 +366,18 @@ class TestConfigurationValidation:
             log_file = Path(temp_dir) / "app.log"
 
             try:
-                with patch.dict(os.environ, {
-                    "ALCHEMY_API_KEY": "test_key",
-                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                    "LOG_FILE": str(log_file),
-                    "LOG_LEVEL": "DEBUG",
-                    "LOG_MAX_SIZE_MB": "50",
-                    "LOG_BACKUP_COUNT": "3",
-                }, clear=True):
+                with patch.dict(
+                    os.environ,
+                    {
+                        "ALCHEMY_API_KEY": "test_key",
+                        "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                        "LOG_FILE": str(log_file),
+                        "LOG_LEVEL": "DEBUG",
+                        "LOG_MAX_SIZE_MB": "50",
+                        "LOG_BACKUP_COUNT": "3",
+                    },
+                    clear=True,
+                ):
                     settings = Settings()
                     validation_result = settings.validate_config()
 
@@ -345,11 +397,15 @@ class TestConfigurationValidation:
 
         try:
             # Invalid environment value
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "ENVIRONMENT": "invalid_env",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "ENVIRONMENT": "invalid_env",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -357,11 +413,15 @@ class TestConfigurationValidation:
                 assert config.environment == Environment.DEVELOPMENT
 
             # Invalid cache backend
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "CACHE_BACKEND": "invalid_backend",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "CACHE_BACKEND": "invalid_backend",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 config = settings.load_config()
 
@@ -379,36 +439,40 @@ class TestConfigurationValidation:
 
         try:
             # Complete valid configuration
-            with patch.dict(os.environ, {
-                "ALCHEMY_API_KEY": "test_key_123456",
-                "INFURA_PROJECT_ID": "test_infura_id",
-                "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/test_key_123456",
-                "ALCHEMY_RATE_LIMIT": "100",
-                "COINGECKO_API_KEY": "cg_test_key",
-                "COINGECKO_BASE_URL": "https://api.coingecko.com/api/v3",
-                "COINGECKO_RATE_LIMIT": "50",
-                "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
-                "GOOGLE_SHEETS_SCOPE": "https://www.googleapis.com/auth/spreadsheets",
-                "CACHE_BACKEND": "hybrid",
-                "REDIS_URL": "redis://localhost:6379/0",
-                "REDIS_PASSWORD": "secret",
-                "FILE_CACHE_DIR": "cache",
-                "CACHE_TTL_PRICES": "3600",
-                "CACHE_TTL_BALANCES": "1800",
-                "CACHE_MAX_SIZE_MB": "500",
-                "BATCH_SIZE": "50",
-                "MAX_CONCURRENT_REQUESTS": "10",
-                "REQUEST_DELAY": "0.1",
-                "INACTIVE_WALLET_THRESHOLD_DAYS": "365",
-                "RETRY_ATTEMPTS": "3",
-                "RETRY_DELAY": "1.0",
-                "LOG_LEVEL": "INFO",
-                "LOG_MAX_SIZE_MB": "100",
-                "LOG_BACKUP_COUNT": "5",
-                "ENVIRONMENT": "staging",
-                "DEBUG": "false",
-                "DRY_RUN": "false",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "ALCHEMY_API_KEY": "test_key_123456",
+                    "INFURA_PROJECT_ID": "test_infura_id",
+                    "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/test_key_123456",
+                    "ALCHEMY_RATE_LIMIT": "100",
+                    "COINGECKO_API_KEY": "cg_test_key",
+                    "COINGECKO_BASE_URL": "https://api.coingecko.com/api/v3",
+                    "COINGECKO_RATE_LIMIT": "50",
+                    "GOOGLE_SHEETS_CREDENTIALS_FILE": str(temp_creds),
+                    "GOOGLE_SHEETS_SCOPE": "https://www.googleapis.com/auth/spreadsheets",
+                    "CACHE_BACKEND": "hybrid",
+                    "REDIS_URL": "redis://localhost:6379/0",
+                    "REDIS_PASSWORD": "secret",
+                    "FILE_CACHE_DIR": "cache",
+                    "CACHE_TTL_PRICES": "3600",
+                    "CACHE_TTL_BALANCES": "1800",
+                    "CACHE_MAX_SIZE_MB": "500",
+                    "BATCH_SIZE": "50",
+                    "MAX_CONCURRENT_REQUESTS": "10",
+                    "REQUEST_DELAY": "0.1",
+                    "INACTIVE_WALLET_THRESHOLD_DAYS": "365",
+                    "RETRY_ATTEMPTS": "3",
+                    "RETRY_DELAY": "1.0",
+                    "LOG_LEVEL": "INFO",
+                    "LOG_MAX_SIZE_MB": "100",
+                    "LOG_BACKUP_COUNT": "5",
+                    "ENVIRONMENT": "staging",
+                    "DEBUG": "false",
+                    "DRY_RUN": "false",
+                },
+                clear=True,
+            ):
                 settings = Settings()
                 validation_result = settings.validate_config()
 

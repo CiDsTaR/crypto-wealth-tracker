@@ -46,109 +46,88 @@ Manual Error Handling:
 """
 
 from .exceptions import (
-    # Base error classes
-    WalletTrackerError,
-    ErrorSeverity,
-    ErrorCategory,
-    RecoveryStrategy,
-
-    # Configuration errors
-    ConfigurationError,
-    AuthenticationError,
-
-    # Network and API errors
-    NetworkError,
-    APIError,
-    RateLimitError,
-
-    # Data validation errors
-    ValidationError,
-    InvalidAddressError,
-    DataNotFoundError,
-
-    # Business logic errors
-    InsufficientBalanceError,
-    ProcessingError,
-    BatchProcessingError,
-
-    # System resource errors
-    SystemResourceError,
-    CacheError,
-    TimeoutError,
-
-    # External service errors
-    EthereumClientError,
-    CoinGeckoError,
-    GoogleSheetsError,
-
-    # User input errors
-    UserInputError,
-    CommandLineError,
-
-    # Utility functions
-    create_error_from_exception,
-    classify_error_severity,
-    get_recovery_strategy,
-    get_error_code,
-    get_error_name,
-
     # Error codes
     ERROR_CODES,
+    APIError,
+    AuthenticationError,
+    BatchProcessingError,
+    CacheError,
+    CoinGeckoError,
+    CommandLineError,
+    # Configuration errors
+    ConfigurationError,
+    DataNotFoundError,
+    ErrorCategory,
+    ErrorSeverity,
+    # External service errors
+    EthereumClientError,
+    GoogleSheetsError,
+    # Business logic errors
+    InsufficientBalanceError,
+    InvalidAddressError,
+    # Network and API errors
+    NetworkError,
+    ProcessingError,
+    RateLimitError,
+    RecoveryStrategy,
+    # System resource errors
+    SystemResourceError,
+    TimeoutError,
+    # User input errors
+    UserInputError,
+    # Data validation errors
+    ValidationError,
+    # Base error classes
+    WalletTrackerError,
+    classify_error_severity,
+    # Utility functions
+    create_error_from_exception,
+    get_error_code,
+    get_error_name,
+    get_recovery_strategy,
 )
-
 from .handlers import (
-    # Main error handler classes
-    ErrorHandler,
     APIErrorHandler,
-    NetworkErrorHandler,
-    ProcessingErrorHandler,
-
     # Circuit breaker
     CircuitBreaker,
-    CircuitState,
     CircuitBreakerOpenError,
-
+    CircuitState,
+    # Main error handler classes
+    ErrorHandler,
+    ErrorHandlerError,
+    ErrorReport,
     # Error statistics
     ErrorStats,
-    ErrorReport,
-
-    # Global handlers
-    get_global_error_handler,
-    get_api_error_handler,
-    get_network_error_handler,
-    get_processing_error_handler,
-
-    # Decorators and context managers
-    handle_errors,
-    error_context,
-
-    # Utility functions
-    handle_and_log_error,
-    setup_error_logging,
-    setup_error_callbacks,
-
+    NetworkErrorHandler,
+    ProcessingErrorHandler,
     # Specialized errors
     RetryExhaustedError,
-    ErrorHandlerError,
+    error_context,
+    get_api_error_handler,
+    # Global handlers
+    get_global_error_handler,
+    get_network_error_handler,
+    get_processing_error_handler,
+    # Utility functions
+    handle_and_log_error,
+    # Decorators and context managers
+    handle_errors,
+    setup_error_callbacks,
+    setup_error_logging,
 )
-
 from .recovery import (
     # Checkpoint system
     CheckpointData,
     CheckpointManager,
-
-    # Recovery system
-    RecoveryManager,
-
     # Progress tracking
     ProgressTracker,
-
+    # Recovery system
+    RecoveryManager,
     # Recovery session
     RecoverySession,
-
+    create_recovery_context,
     # Utility functions
     with_checkpointing,
-    create_recovery_context,
 )
 
 # Package version and metadata
@@ -173,6 +152,7 @@ def get_global_checkpoint_manager(storage_path=None) -> CheckpointManager:
     global _global_checkpoint_manager
     if _global_checkpoint_manager is None:
         from pathlib import Path
+
         default_path = Path("checkpoints") if storage_path is None else storage_path
         _global_checkpoint_manager = CheckpointManager(storage_path=default_path)
     return _global_checkpoint_manager
@@ -192,10 +172,7 @@ def get_global_recovery_manager() -> RecoveryManager:
 
 
 def setup_error_system(
-        storage_path=None,
-        enable_file_checkpoints=True,
-        max_retries=3,
-        enable_circuit_breakers=True
+    storage_path=None, enable_file_checkpoints=True, max_retries=3, enable_circuit_breakers=True
 ) -> dict:
     """Set up the complete error handling system.
 
@@ -227,24 +204,22 @@ def setup_error_system(
     global_handler.enable_circuit_breaker = enable_circuit_breakers
 
     # Register recovery strategies
-    recovery_manager.register_recovery_strategy(
-        RecoveryStrategy.FALLBACK,
-        _default_fallback_handler
-    )
+    recovery_manager.register_recovery_strategy(RecoveryStrategy.FALLBACK, _default_fallback_handler)
 
     return {
-        'checkpoint_manager': checkpoint_manager,
-        'recovery_manager': recovery_manager,
-        'error_handler': global_handler,
-        'api_handler': get_api_error_handler(),
-        'network_handler': get_network_error_handler(),
-        'processing_handler': get_processing_error_handler()
+        "checkpoint_manager": checkpoint_manager,
+        "recovery_manager": recovery_manager,
+        "error_handler": global_handler,
+        "api_handler": get_api_error_handler(),
+        "network_handler": get_network_error_handler(),
+        "processing_handler": get_processing_error_handler(),
     }
 
 
 async def _default_fallback_handler(error, operation_name):
     """Default fallback handler for recovery strategies."""
     import logging
+
     logger = logging.getLogger(__name__)
 
     logger.info(f"Executing default fallback for {operation_name}: {error.message}")
@@ -262,13 +237,8 @@ async def _default_fallback_handler(error, operation_name):
 
 # Convenience functions for common error scenarios
 
-async def handle_api_error(
-        func,
-        *args,
-        service_name=None,
-        max_retries=5,
-        **kwargs
-):
+
+async def handle_api_error(func, *args, service_name=None, max_retries=5, **kwargs):
     """Handle API operations with specialized error handling.
 
     Args:
@@ -288,12 +258,7 @@ async def handle_api_error(
         return await func(*args, **kwargs)
 
 
-async def handle_network_operation(
-        func,
-        *args,
-        operation_name=None,
-        **kwargs
-):
+async def handle_network_operation(func, *args, operation_name=None, **kwargs):
     """Handle network operations with specialized error handling.
 
     Args:
@@ -313,12 +278,7 @@ async def handle_network_operation(
 
 
 async def handle_processing_operation(
-        func,
-        *args,
-        operation_name=None,
-        enable_checkpoints=True,
-        total_items=None,
-        **kwargs
+    func, *args, operation_name=None, enable_checkpoints=True, total_items=None, **kwargs
 ):
     """Handle processing operations with checkpointing and recovery.
 
@@ -341,12 +301,12 @@ async def handle_processing_operation(
         recovery_manager = get_global_recovery_manager()
 
         async with RecoverySession(
-                operation_name=op_name,
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager,
-                total_items=total_items
+            operation_name=op_name,
+            checkpoint_manager=checkpoint_manager,
+            recovery_manager=recovery_manager,
+            total_items=total_items,
         ) as session:
-            kwargs['recovery_session'] = session
+            kwargs["recovery_session"] = session
             return await func(*args, **kwargs)
     else:
         # Use regular error handling
@@ -356,12 +316,12 @@ async def handle_processing_operation(
 
 
 def create_custom_error(
-        message: str,
-        error_code: str = None,
-        severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-        category: ErrorCategory = ErrorCategory.BUSINESS_LOGIC,
-        recovery_strategy: RecoveryStrategy = RecoveryStrategy.RETRY,
-        **kwargs
+    message: str,
+    error_code: str = None,
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+    category: ErrorCategory = ErrorCategory.BUSINESS_LOGIC,
+    recovery_strategy: RecoveryStrategy = RecoveryStrategy.RETRY,
+    **kwargs,
 ) -> WalletTrackerError:
     """Create a custom error with specified properties.
 
@@ -382,5 +342,5 @@ def create_custom_error(
         severity=severity,
         category=category,
         recovery_strategy=recovery_strategy,
-        **kwargs
+        **kwargs,
     )

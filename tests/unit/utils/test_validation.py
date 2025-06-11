@@ -1,10 +1,9 @@
 """Tests for validation utilities."""
 
-import pytest
+from datetime import datetime
 from decimal import Decimal
-from datetime import datetime, date
-from typing import List, Dict, Optional, Union
-from unittest.mock import patch
+
+import pytest
 
 # Note: Tests assume validation.py module will be implemented
 # Currently the module is empty
@@ -115,7 +114,7 @@ class TestAdvancedValidators:
 
     def test_validate_wallet_balance_data(self):
         """Test wallet balance data validation."""
-        from wallet_tracker.utils.validation import validate_wallet_balance_data, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_wallet_balance_data
 
         # Valid balance data
         valid_data = {
@@ -125,11 +124,11 @@ class TestAdvancedValidators:
                 {
                     "symbol": "USDC",
                     "balance": Decimal("1000.0"),
-                    "contract_address": "0xA0b86a33E6441e94bB0a8d0F7E5F8D69E2C0e5a0"
+                    "contract_address": "0xA0b86a33E6441e94bB0a8d0F7E5F8D69E2C0e5a0",
                 }
             ],
             "total_value_usd": Decimal("3500.0"),
-            "last_updated": datetime.now()
+            "last_updated": datetime.now(),
         }
 
         # Should not raise exception
@@ -146,7 +145,7 @@ class TestAdvancedValidators:
 
     def test_validate_token_price_data(self):
         """Test token price data validation."""
-        from wallet_tracker.utils.validation import validate_token_price_data, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_token_price_data
 
         # Valid price data
         valid_data = {
@@ -154,7 +153,7 @@ class TestAdvancedValidators:
             "symbol": "ETH",
             "current_price_usd": Decimal("2000.50"),
             "market_cap_usd": Decimal("240000000000"),
-            "last_updated": datetime.now()
+            "last_updated": datetime.now(),
         }
 
         validate_token_price_data(valid_data)
@@ -171,20 +170,20 @@ class TestAdvancedValidators:
 
     def test_validate_configuration_data(self):
         """Test configuration data validation."""
-        from wallet_tracker.utils.validation import validate_configuration_data, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_configuration_data
 
         # Valid configuration
         valid_config = {
             "ethereum": {
                 "alchemy_api_key": "test_key_123456789012345678901234567890",
                 "rpc_url": "https://eth-mainnet.g.alchemy.com/v2/test_key",
-                "rate_limit": 100
+                "rate_limit": 100,
             },
             "coingecko": {
                 "api_key": "CG-123456789012345678901234567890123456",
                 "base_url": "https://api.coingecko.com/api/v3",
-                "rate_limit": 30
-            }
+                "rate_limit": 30,
+            },
         }
 
         validate_configuration_data(valid_config)
@@ -202,16 +201,16 @@ class TestAdvancedValidators:
 
     def test_validate_batch_processing_data(self):
         """Test batch processing data validation."""
-        from wallet_tracker.utils.validation import validate_batch_processing_data, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_batch_processing_data
 
         # Valid batch data
         valid_batch = {
             "addresses": [
                 {"address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", "label": "Wallet 1"},
-                {"address": "0x8ba1f109551bD432803012645Hac136c41AA563", "label": "Wallet 2"}
+                {"address": "0x8ba1f109551bD432803012645Hac136c41AA563", "label": "Wallet 2"},
             ],
             "batch_size": 50,
-            "max_concurrent": 10
+            "max_concurrent": 10,
         }
 
         validate_batch_processing_data(valid_batch)
@@ -219,7 +218,7 @@ class TestAdvancedValidators:
         # Invalid batch data - empty addresses
         invalid_batch = {
             "addresses": [],  # Empty list
-            "batch_size": 50
+            "batch_size": 50,
         }
 
         with pytest.raises(ValidationError):
@@ -231,13 +230,9 @@ class TestFieldValidators:
 
     def test_validate_required_fields(self):
         """Test required field validation."""
-        from wallet_tracker.utils.validation import validate_required_fields, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_required_fields
 
-        data = {
-            "name": "Test",
-            "email": "test@example.com",
-            "age": 25
-        }
+        data = {"name": "Test", "email": "test@example.com", "age": 25}
 
         required_fields = ["name", "email"]
 
@@ -254,21 +249,11 @@ class TestFieldValidators:
 
     def test_validate_field_types(self):
         """Test field type validation."""
-        from wallet_tracker.utils.validation import validate_field_types, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_field_types
 
-        data = {
-            "name": "Test",
-            "age": 25,
-            "balance": Decimal("100.50"),
-            "active": True
-        }
+        data = {"name": "Test", "age": 25, "balance": Decimal("100.50"), "active": True}
 
-        type_specs = {
-            "name": str,
-            "age": int,
-            "balance": Decimal,
-            "active": bool
-        }
+        type_specs = {"name": str, "age": int, "balance": Decimal, "active": bool}
 
         # Should pass - all types correct
         validate_field_types(data, type_specs)
@@ -278,7 +263,7 @@ class TestFieldValidators:
             "name": "Test",
             "age": "25",  # Should be int, not str
             "balance": Decimal("100.50"),
-            "active": True
+            "active": True,
         }
 
         with pytest.raises(ValidationError):
@@ -286,18 +271,14 @@ class TestFieldValidators:
 
     def test_validate_field_ranges(self):
         """Test field range validation."""
-        from wallet_tracker.utils.validation import validate_field_ranges, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_field_ranges
 
-        data = {
-            "age": 25,
-            "balance": Decimal("100.50"),
-            "percentage": 85.5
-        }
+        data = {"age": 25, "balance": Decimal("100.50"), "percentage": 85.5}
 
         range_specs = {
             "age": {"min": 0, "max": 120},
             "balance": {"min": Decimal("0"), "max": Decimal("1000000")},
-            "percentage": {"min": 0.0, "max": 100.0}
+            "percentage": {"min": 0.0, "max": 100.0},
         }
 
         # Should pass - all values in range
@@ -307,7 +288,7 @@ class TestFieldValidators:
         out_of_range_data = {
             "age": 150,  # Over max
             "balance": Decimal("100.50"),
-            "percentage": 85.5
+            "percentage": 85.5,
         }
 
         with pytest.raises(ValidationError):
@@ -315,18 +296,14 @@ class TestFieldValidators:
 
     def test_validate_field_patterns(self):
         """Test field pattern validation."""
-        from wallet_tracker.utils.validation import validate_field_patterns, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_field_patterns
 
-        data = {
-            "email": "user@example.com",
-            "phone": "+1-555-123-4567",
-            "token_symbol": "ETH"
-        }
+        data = {"email": "user@example.com", "phone": "+1-555-123-4567", "token_symbol": "ETH"}
 
         pattern_specs = {
             "email": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
             "phone": r"^\+\d{1,3}-\d{3}-\d{3}-\d{4}$",
-            "token_symbol": r"^[A-Z]{2,10}$"
+            "token_symbol": r"^[A-Z]{2,10}$",
         }
 
         # Should pass - all patterns match
@@ -336,7 +313,7 @@ class TestFieldValidators:
         invalid_pattern_data = {
             "email": "invalid-email",  # Doesn't match email pattern
             "phone": "+1-555-123-4567",
-            "token_symbol": "ETH"
+            "token_symbol": "ETH",
         }
 
         with pytest.raises(ValidationError):
@@ -348,51 +325,48 @@ class TestValidationDecorators:
 
     def test_validate_input_decorator(self):
         """Test input validation decorator."""
-        from wallet_tracker.utils.validation import validate_input, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_input
 
-        @validate_input({
-            "address": {"type": str, "pattern": r"^0x[a-fA-F0-9]{40}$"},
-            "amount": {"type": Decimal, "min": Decimal("0")}
-        })
+        @validate_input(
+            {
+                "address": {"type": str, "pattern": r"^0x[a-fA-F0-9]{40}$"},
+                "amount": {"type": Decimal, "min": Decimal("0")},
+            }
+        )
         def process_transaction(address: str, amount: Decimal):
             return f"Processing {amount} to {address}"
 
         # Valid input
-        result = process_transaction(
-            address="0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
-            amount=Decimal("100.5")
-        )
+        result = process_transaction(address="0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", amount=Decimal("100.5"))
         assert "Processing" in result
 
         # Invalid input
         with pytest.raises(ValidationError):
-            process_transaction(
-                address="invalid-address",
-                amount=Decimal("100.5")
-            )
+            process_transaction(address="invalid-address", amount=Decimal("100.5"))
 
     def test_validate_output_decorator(self):
         """Test output validation decorator."""
-        from wallet_tracker.utils.validation import validate_output, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, validate_output
 
-        @validate_output({
-            "status": {"type": str, "choices": ["success", "error", "pending"]},
-            "value": {"type": Decimal, "min": Decimal("0")}
-        })
-        def get_transaction_status():
-            return {
-                "status": "success",
-                "value": Decimal("250.75")
+        @validate_output(
+            {
+                "status": {"type": str, "choices": ["success", "error", "pending"]},
+                "value": {"type": Decimal, "min": Decimal("0")},
             }
+        )
+        def get_transaction_status():
+            return {"status": "success", "value": Decimal("250.75")}
 
         # Should pass - valid output
         result = get_transaction_status()
         assert result["status"] == "success"
 
         # Invalid output would be caught by decorator
-        @validate_output({
-            "status": {"type": str, "choices": ["success", "error"]},
-        })
+        @validate_output(
+            {
+                "status": {"type": str, "choices": ["success", "error"]},
+            }
+        )
         def invalid_output_function():
             return {"status": "invalid_status"}  # Not in choices
 
@@ -406,16 +380,10 @@ class TestValidationDecorators:
         schema = {
             "type": "object",
             "properties": {
-                "wallet_address": {
-                    "type": "string",
-                    "pattern": "^0x[a-fA-F0-9]{40}$"
-                },
-                "balance": {
-                    "type": "number",
-                    "minimum": 0
-                }
+                "wallet_address": {"type": "string", "pattern": "^0x[a-fA-F0-9]{40}$"},
+                "balance": {"type": "number", "minimum": 0},
             },
-            "required": ["wallet_address", "balance"]
+            "required": ["wallet_address", "balance"],
         }
 
         @validate_schema(schema)
@@ -423,10 +391,7 @@ class TestValidationDecorators:
             return f"Processing wallet {data['wallet_address']}"
 
         # Valid data
-        valid_data = {
-            "wallet_address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
-            "balance": 100.5
-        }
+        valid_data = {"wallet_address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", "balance": 100.5}
 
         result = process_wallet_data(valid_data)
         assert "Processing wallet" in result
@@ -437,7 +402,7 @@ class TestCustomValidators:
 
     def test_wallet_address_validator(self):
         """Test wallet address validator class."""
-        from wallet_tracker.utils.validation import WalletAddressValidator, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, WalletAddressValidator
 
         validator = WalletAddressValidator()
 
@@ -463,7 +428,7 @@ class TestCustomValidators:
             "name": "Ethereum",
             "decimals": 18,
             "contract_address": "0x0000000000000000000000000000000000000000",
-            "current_price_usd": Decimal("2000.50")
+            "current_price_usd": Decimal("2000.50"),
         }
 
         # Should pass
@@ -489,13 +454,9 @@ class TestCustomValidators:
             "ethereum": {
                 "alchemy_api_key": "test_key_123456789012345678901234567890",
                 "rpc_url": "https://eth-mainnet.g.alchemy.com/v2/test_key",
-                "rate_limit": 100
+                "rate_limit": 100,
             },
-            "cache": {
-                "backend": "redis",
-                "ttl_prices": 300,
-                "ttl_balances": 150
-            }
+            "cache": {"backend": "redis", "ttl_prices": 300, "ttl_balances": 150},
         }
 
         # Should pass
@@ -506,7 +467,7 @@ class TestCustomValidators:
             "ethereum": {
                 "alchemy_api_key": "",  # Empty API key
                 "rpc_url": "invalid-url",  # Invalid URL
-                "rate_limit": -1  # Invalid rate limit
+                "rate_limit": -1,  # Invalid rate limit
             }
         }
 
@@ -530,17 +491,14 @@ class TestValidationChains:
         chain.add_validator("field_ranges", {"amount": {"min": Decimal("0")}})
 
         # Valid data should pass all validators
-        valid_data = {
-            "address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
-            "amount": Decimal("100.5")
-        }
+        valid_data = {"address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", "amount": Decimal("100.5")}
 
         chain.validate(valid_data)
 
         # Invalid data should fail at appropriate validator
         invalid_data = {
             "address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
-            "amount": Decimal("-10")  # Fails range validation
+            "amount": Decimal("-10"),  # Fails range validation
         }
 
         with pytest.raises(ValidationError) as exc_info:
@@ -550,7 +508,7 @@ class TestValidationChains:
 
     def test_conditional_validation(self):
         """Test conditional validation logic."""
-        from wallet_tracker.utils.validation import ConditionalValidator, ValidationError
+        from wallet_tracker.utils.validation import ConditionalValidator
 
         def condition_func(data):
             return data.get("type") == "token_transfer"
@@ -559,15 +517,15 @@ class TestValidationChains:
             condition=condition_func,
             validators={
                 "required_fields": ["token_address", "recipient"],
-                "field_types": {"token_address": str, "recipient": str}
-            }
+                "field_types": {"token_address": str, "recipient": str},
+            },
         )
 
         # Should validate when condition is true
         token_data = {
             "type": "token_transfer",
             "token_address": "0xA0b86a33E6441e94bB0a8d0F7E5F8D69E2C0e5a0",
-            "recipient": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86"
+            "recipient": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
         }
 
         validator.validate(token_data)
@@ -575,7 +533,7 @@ class TestValidationChains:
         # Should skip validation when condition is false
         eth_data = {
             "type": "eth_transfer",
-            "recipient": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86"
+            "recipient": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
             # Missing token_address, but that's OK for eth_transfer
         }
 
@@ -598,7 +556,7 @@ class TestValidationChains:
             "address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
             "amount": Decimal("100.5"),
             "currency": "USD",
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         validator.validate(valid_data)
@@ -608,7 +566,7 @@ class TestValidationChains:
             "address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
             "amount": Decimal("100.5"),
             "currency": "INVALID",  # Not in choices
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         with pytest.raises(ValidationError):
@@ -636,8 +594,14 @@ class TestValidationUtils:
         from wallet_tracker.utils.validation import normalize_address
 
         # Should convert to lowercase and add 0x prefix
-        assert normalize_address("742d35Cc6634C0532925a3b8D40e3f337ABC7b86") == "0x742d35cc6634c0532925a3b8d40e3f337abc7b86"
-        assert normalize_address("0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86") == "0x742d35cc6634c0532925a3b8d40e3f337abc7b86"
+        assert (
+            normalize_address("742d35Cc6634C0532925a3b8D40e3f337ABC7b86")
+            == "0x742d35cc6634c0532925a3b8d40e3f337abc7b86"
+        )
+        assert (
+            normalize_address("0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86")
+            == "0x742d35cc6634c0532925a3b8d40e3f337abc7b86"
+        )
 
         # Should handle None and empty strings
         assert normalize_address(None) is None
@@ -645,7 +609,7 @@ class TestValidationUtils:
 
     def test_format_validation_error(self):
         """Test validation error formatting."""
-        from wallet_tracker.utils.validation import format_validation_error, ValidationError
+        from wallet_tracker.utils.validation import ValidationError, format_validation_error
 
         error = ValidationError("Field 'address' is invalid")
         formatted = format_validation_error(error)
@@ -677,7 +641,7 @@ class TestValidationIntegration:
 
     def test_end_to_end_wallet_validation(self):
         """Test complete wallet data validation workflow."""
-        from wallet_tracker.utils.validation import WalletDataValidator, ValidationError
+        from wallet_tracker.utils.validation import WalletDataValidator
 
         validator = WalletDataValidator()
 
@@ -691,19 +655,19 @@ class TestValidationIntegration:
                     "symbol": "USDC",
                     "contract_address": "0xA0b86a33E6441e94bB0a8d0F7E5F8D69E2C0e5a0",
                     "balance": Decimal("1000.0"),
-                    "decimals": 6
+                    "decimals": 6,
                 },
                 {
                     "symbol": "DAI",
                     "contract_address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
                     "balance": Decimal("500.0"),
-                    "decimals": 18
-                }
+                    "decimals": 18,
+                },
             ],
             "total_value_usd": Decimal("3500.0"),
             "last_updated": datetime.now(),
             "transaction_count": 150,
-            "is_active": True
+            "is_active": True,
         }
 
         # Should pass validation
@@ -715,14 +679,14 @@ class TestValidationIntegration:
 
     def test_batch_validation(self):
         """Test batch validation of multiple items."""
-        from wallet_tracker.utils.validation import BatchValidator, ValidationError
+        from wallet_tracker.utils.validation import BatchValidator
 
         validator = BatchValidator()
 
         wallet_addresses = [
             "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
             "0x8ba1f109551bD432803012645Hac136c41AA563",
-            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
         ]
 
         # Valid batch
@@ -734,7 +698,7 @@ class TestValidationIntegration:
         mixed_addresses = [
             "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",  # Valid
             "invalid-address",  # Invalid
-            "0x8ba1f109551bD432803012645Hac136c41AA563"  # Valid
+            "0x8ba1f109551bD432803012645Hac136c41AA563",  # Valid
         ]
 
         results = validator.validate_batch(mixed_addresses, "ethereum_address")
@@ -744,7 +708,7 @@ class TestValidationIntegration:
 
     def test_configuration_validation_workflow(self):
         """Test complete configuration validation workflow."""
-        from wallet_tracker.utils.validation import ConfigurationValidator, ValidationError
+        from wallet_tracker.utils.validation import ConfigurationValidator
 
         validator = ConfigurationValidator()
 
@@ -753,24 +717,20 @@ class TestValidationIntegration:
             "ethereum": {
                 "alchemy_api_key": "test_key_123456789012345678901234567890",
                 "rpc_url": "https://eth-mainnet.g.alchemy.com/v2/test_key",
-                "rate_limit": 100
+                "rate_limit": 100,
             },
             "coingecko": {
                 "api_key": "CG-123456789012345678901234567890123456",
                 "base_url": "https://api.coingecko.com/api/v3",
-                "rate_limit": 30
+                "rate_limit": 30,
             },
             "cache": {
                 "backend": "redis",
                 "redis_url": "redis://localhost:6379/0",
                 "ttl_prices": 300,
-                "ttl_balances": 150
+                "ttl_balances": 150,
             },
-            "processing": {
-                "batch_size": 50,
-                "max_concurrent": 10,
-                "timeout_seconds": 30
-            }
+            "processing": {"batch_size": 50, "max_concurrent": 10, "timeout_seconds": 30},
         }
 
         # Should validate successfully
@@ -840,10 +800,7 @@ class TestValidationPerformance:
         validator.add_field_validator("expensive_field", track_validation)
         validator.add_field_validator("cheap_field", track_validation)
 
-        data = {
-            "cheap_field": "value1",
-            "expensive_field": "value2"
-        }
+        data = {"cheap_field": "value1", "expensive_field": "value2"}
 
         # Only validate requested fields
         result = validator.validate_fields(data, ["cheap_field"])
@@ -854,6 +811,7 @@ class TestValidationPerformance:
     def test_parallel_validation(self):
         """Test parallel validation for large datasets."""
         import asyncio
+
         from wallet_tracker.utils.validation import ParallelValidator
 
         async def async_validation(item):
@@ -880,16 +838,14 @@ class TestValidationErrorHandling:
         from wallet_tracker.utils.validation import DetailedValidationError, ValidationContext
 
         context = ValidationContext(
-            field_path="user.wallet.address",
-            data_type="ethereum_address",
-            value="invalid-address"
+            field_path="user.wallet.address", data_type="ethereum_address", value="invalid-address"
         )
 
         error = DetailedValidationError(
             message="Invalid Ethereum address format",
             context=context,
             code="INVALID_ETH_ADDRESS",
-            suggestions=["Ensure address starts with 0x", "Verify address length is 42 characters"]
+            suggestions=["Ensure address starts with 0x", "Verify address length is 42 characters"],
         )
 
         assert error.field_path == "user.wallet.address"
@@ -899,7 +855,7 @@ class TestValidationErrorHandling:
 
     def test_validation_error_collection(self):
         """Test collecting multiple validation errors."""
-        from wallet_tracker.utils.validation import ValidationErrorCollector, ValidationError
+        from wallet_tracker.utils.validation import ValidationErrorCollector
 
         collector = ValidationErrorCollector()
 
@@ -937,7 +893,7 @@ class TestValidationErrorHandling:
 
     def test_validation_recovery_strategies(self):
         """Test validation error recovery strategies."""
-        from wallet_tracker.utils.validation import RecoverableValidator, ValidationError
+        from wallet_tracker.utils.validation import RecoverableValidator
 
         def attempt_fix_address(value):
             if not value.startswith("0x"):
@@ -956,7 +912,7 @@ class TestValidationErrorHandling:
         # Test data with fixable issues
         data = {
             "address": "742d35Cc6634C0532925a3b8D40e3f337ABC7b86",  # Missing 0x
-            "amount": "$1,234.56"  # String with formatting
+            "amount": "$1,234.56",  # String with formatting
         }
 
         result = validator.validate_and_recover(data)
@@ -971,7 +927,7 @@ class TestValidationExtensions:
 
     def test_custom_validator_plugin(self):
         """Test custom validator plugin system."""
-        from wallet_tracker.utils.validation import ValidatorPlugin, ValidationRegistry
+        from wallet_tracker.utils.validation import ValidationRegistry, ValidatorPlugin
 
         class TokenSymbolPlugin(ValidatorPlugin):
             def validate(self, value, **kwargs):
@@ -1001,7 +957,7 @@ class TestValidationExtensions:
 
     def test_validation_middleware(self):
         """Test validation middleware system."""
-        from wallet_tracker.utils.validation import ValidationMiddleware, ValidationChain
+        from wallet_tracker.utils.validation import ValidationChain, ValidationMiddleware
 
         class LoggingMiddleware(ValidationMiddleware):
             def __init__(self):
@@ -1045,13 +1001,13 @@ class TestValidationExtensions:
                     "required": True,
                     "type": "string",
                     "pattern": r"^0x[a-fA-F0-9]{40}$",
-                    "error_message": "Invalid Ethereum address"
+                    "error_message": "Invalid Ethereum address",
                 },
                 "balance": {
                     "required": True,
                     "type": "decimal",
                     "minimum": 0,
-                    "error_message": "Balance must be non-negative"
+                    "error_message": "Balance must be non-negative",
                 },
                 "tokens": {
                     "type": "array",
@@ -1059,10 +1015,10 @@ class TestValidationExtensions:
                         "type": "object",
                         "properties": {
                             "symbol": {"type": "string", "pattern": r"^[A-Z]{2,10}$"},
-                            "amount": {"type": "decimal", "minimum": 0}
-                        }
-                    }
-                }
+                            "amount": {"type": "decimal", "minimum": 0},
+                        },
+                    },
+                },
             }
         }
 
@@ -1072,10 +1028,7 @@ class TestValidationExtensions:
         valid_data = {
             "address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86",
             "balance": Decimal("100.5"),
-            "tokens": [
-                {"symbol": "USDC", "amount": Decimal("1000")},
-                {"symbol": "DAI", "amount": Decimal("500")}
-            ]
+            "tokens": [{"symbol": "USDC", "amount": Decimal("1000")}, {"symbol": "DAI", "amount": Decimal("500")}],
         }
 
         result = engine.validate("wallet_data", valid_data)
@@ -1087,7 +1040,7 @@ class TestValidationExtensions:
             "balance": Decimal("-10"),  # Negative balance
             "tokens": [
                 {"symbol": "usdc", "amount": Decimal("1000")}  # Lowercase symbol
-            ]
+            ],
         }
 
         result = engine.validate("wallet_data", invalid_data)
@@ -1101,15 +1054,13 @@ class TestValidationBenchmarks:
     def test_validation_performance_benchmark(self):
         """Test validation performance with large datasets."""
         import time
+
         from wallet_tracker.utils.validation import PerformanceValidator
 
         validator = PerformanceValidator()
 
         # Generate test data
-        test_addresses = [
-            f"0x{'1' * 39}{str(i).zfill(1)}"
-            for i in range(1000)
-        ]
+        test_addresses = [f"0x{'1' * 39}{str(i).zfill(1)}" for i in range(1000)]
 
         # Benchmark validation
         start_time = time.time()
@@ -1156,15 +1107,13 @@ class TestValidationBenchmarks:
     def test_concurrent_validation(self):
         """Test concurrent validation performance."""
         import asyncio
+
         from wallet_tracker.utils.validation import ConcurrentValidator
 
         validator = ConcurrentValidator(max_workers=4)
 
         # Create large dataset
-        test_data = [
-            {"address": f"0x{'1' * 39}{str(i).zfill(1)}", "amount": Decimal(str(i))}
-            for i in range(1000)
-        ]
+        test_data = [{"address": f"0x{'1' * 39}{str(i).zfill(1)}", "amount": Decimal(str(i))} for i in range(1000)]
 
         async def run_validation():
             results = await validator.validate_concurrent(test_data, "wallet_transaction")

@@ -1,11 +1,9 @@
 """Tests for retry mechanisms and utilities."""
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any, Callable, Type
-import random
 import time
+
+import pytest
 
 # Note: Tests assume retry.py module will be implemented
 # Currently the module is empty
@@ -55,7 +53,7 @@ class TestRetryDecorator:
     @pytest.mark.asyncio
     async def test_max_attempts_exceeded(self):
         """Test behavior when max attempts is exceeded."""
-        from wallet_tracker.utils.retry import retry, RetryExhaustedError
+        from wallet_tracker.utils.retry import RetryExhaustedError, retry
 
         call_count = 0
 
@@ -96,16 +94,11 @@ class TestRetryDecorator:
     @pytest.mark.asyncio
     async def test_exponential_backoff(self):
         """Test exponential backoff delay."""
-        from wallet_tracker.utils.retry import retry, BackoffStrategy
+        from wallet_tracker.utils.retry import BackoffStrategy, retry
 
         call_times = []
 
-        @retry(
-            max_attempts=3,
-            delay=0.01,
-            backoff=BackoffStrategy.EXPONENTIAL,
-            multiplier=2.0
-        )
+        @retry(max_attempts=3, delay=0.01, backoff=BackoffStrategy.EXPONENTIAL, multiplier=2.0)
         async def backoff_function():
             call_times.append(asyncio.get_event_loop().time())
             raise ConnectionError("Retry with backoff")
@@ -124,16 +117,11 @@ class TestRetryDecorator:
     @pytest.mark.asyncio
     async def test_linear_backoff(self):
         """Test linear backoff delay."""
-        from wallet_tracker.utils.retry import retry, BackoffStrategy
+        from wallet_tracker.utils.retry import BackoffStrategy, retry
 
         call_times = []
 
-        @retry(
-            max_attempts=3,
-            delay=0.01,
-            backoff=BackoffStrategy.LINEAR,
-            multiplier=2.0
-        )
+        @retry(max_attempts=3, delay=0.01, backoff=BackoffStrategy.LINEAR, multiplier=2.0)
         async def linear_backoff_function():
             call_times.append(asyncio.get_event_loop().time())
             raise ConnectionError("Linear backoff test")
@@ -159,7 +147,7 @@ class TestRetryDecorator:
             await jitter_function()
 
         # Calculate delays
-        delays = [call_times[i+1] - call_times[i] for i in range(len(call_times)-1)]
+        delays = [call_times[i + 1] - call_times[i] for i in range(len(call_times) - 1)]
 
         # With jitter, delays should vary
         assert len(set(delays)) > 1 or len(delays) <= 1  # Allow for small test runs
@@ -286,11 +274,7 @@ class TestRetryStrategies:
         """Test exponential backoff strategy."""
         from wallet_tracker.utils.retry import ExponentialBackoffStrategy
 
-        strategy = ExponentialBackoffStrategy(
-            initial_delay=0.1,
-            multiplier=2.0,
-            max_delay=1.0
-        )
+        strategy = ExponentialBackoffStrategy(initial_delay=0.1, multiplier=2.0, max_delay=1.0)
 
         assert strategy.get_delay(1) == 0.1
         assert strategy.get_delay(2) == 0.2
@@ -302,11 +286,7 @@ class TestRetryStrategies:
         """Test linear backoff strategy."""
         from wallet_tracker.utils.retry import LinearBackoffStrategy
 
-        strategy = LinearBackoffStrategy(
-            initial_delay=0.1,
-            increment=0.05,
-            max_delay=0.5
-        )
+        strategy = LinearBackoffStrategy(initial_delay=0.1, increment=0.05, max_delay=0.5)
 
         assert strategy.get_delay(1) == 0.1
         assert strategy.get_delay(2) == 0.15
@@ -326,7 +306,7 @@ class TestRetryStrategies:
         expected_multipliers = [1, 1, 2, 3, 5, 8]
         expected_delays = [0.01 * m for m in expected_multipliers]
 
-        for actual, expected in zip(delays, expected_delays):
+        for actual, expected in zip(delays, expected_delays, strict=False):
             assert abs(actual - expected) < 0.001
 
     @pytest.mark.asyncio
@@ -335,13 +315,13 @@ class TestRetryStrategies:
         from wallet_tracker.utils.retry import CustomBackoffStrategy
 
         def custom_delay_func(attempt):
-            return 0.01 * (attempt ** 1.5)
+            return 0.01 * (attempt**1.5)
 
         strategy = CustomBackoffStrategy(delay_function=custom_delay_func, max_delay=1.0)
 
         assert abs(strategy.get_delay(1) - 0.01) < 0.001
-        assert abs(strategy.get_delay(2) - 0.01 * (2 ** 1.5)) < 0.001
-        assert abs(strategy.get_delay(4) - 0.01 * (4 ** 1.5)) < 0.001
+        assert abs(strategy.get_delay(2) - 0.01 * (2**1.5)) < 0.001
+        assert abs(strategy.get_delay(4) - 0.01 * (4**1.5)) < 0.001
 
 
 class TestRetryableOperation:
@@ -361,11 +341,7 @@ class TestRetryableOperation:
                 raise ConnectionError(f"Attempt {call_count} failed")
             return f"Success on attempt {call_count}"
 
-        operation = RetryableOperation(
-            function=flaky_operation,
-            max_attempts=5,
-            delay=0.01
-        )
+        operation = RetryableOperation(function=flaky_operation, max_attempts=5, delay=0.01)
 
         result = await operation.execute()
 
@@ -380,11 +356,7 @@ class TestRetryableOperation:
         async def always_failing_operation():
             raise RuntimeError("Always fails")
 
-        operation = RetryableOperation(
-            function=always_failing_operation,
-            max_attempts=3,
-            delay=0.01
-        )
+        operation = RetryableOperation(function=always_failing_operation, max_attempts=3, delay=0.01)
 
         with pytest.raises(RetryExhaustedError):
             await operation.execute()
@@ -405,11 +377,7 @@ class TestRetryableOperation:
                 raise ValueError("First attempt fails")
             return (x + y) * multiplier
 
-        operation = RetryableOperation(
-            function=operation_with_args,
-            max_attempts=3,
-            delay=0.01
-        )
+        operation = RetryableOperation(function=operation_with_args, max_attempts=3, delay=0.01)
 
         result = await operation.execute(5, 3, multiplier=4)
 
@@ -423,11 +391,7 @@ class TestRetryableOperation:
         async def test_operation():
             return "test"
 
-        operation = RetryableOperation(
-            function=test_operation,
-            max_attempts=3,
-            delay=0.01
-        )
+        operation = RetryableOperation(function=test_operation, max_attempts=3, delay=0.01)
 
         stats = operation.get_stats()
 
@@ -443,7 +407,7 @@ class TestRetryConditions:
     @pytest.mark.asyncio
     async def test_exception_based_condition(self):
         """Test retry condition based on exception type."""
-        from wallet_tracker.utils.retry import retry, ExceptionBasedCondition
+        from wallet_tracker.utils.retry import ExceptionBasedCondition
 
         condition = ExceptionBasedCondition([ConnectionError, TimeoutError])
 
@@ -466,7 +430,7 @@ class TestRetryConditions:
     @pytest.mark.asyncio
     async def test_combined_condition(self):
         """Test combined retry conditions."""
-        from wallet_tracker.utils.retry import CombinedCondition, ExceptionBasedCondition, AttemptBasedCondition
+        from wallet_tracker.utils.retry import AttemptBasedCondition, CombinedCondition, ExceptionBasedCondition
 
         exception_condition = ExceptionBasedCondition([ConnectionError])
         attempt_condition = AttemptBasedCondition(max_attempts=2)
@@ -512,11 +476,7 @@ class TestRetryCallbacks:
         callback_calls = []
 
         def before_retry_callback(attempt, exception, delay):
-            callback_calls.append({
-                "attempt": attempt,
-                "exception": type(exception).__name__,
-                "delay": delay
-            })
+            callback_calls.append({"attempt": attempt, "exception": type(exception).__name__, "delay": delay})
 
         call_count = 0
 
@@ -543,11 +503,9 @@ class TestRetryCallbacks:
         callback_calls = []
 
         def after_retry_callback(attempt, result, exception):
-            callback_calls.append({
-                "attempt": attempt,
-                "result": result,
-                "exception": type(exception).__name__ if exception else None
-            })
+            callback_calls.append(
+                {"attempt": attempt, "result": result, "exception": type(exception).__name__ if exception else None}
+            )
 
         call_count = 0
 
@@ -569,7 +527,7 @@ class TestRetryCallbacks:
     @pytest.mark.asyncio
     async def test_on_final_failure_callback(self):
         """Test final failure callback."""
-        from wallet_tracker.utils.retry import retry, RetryExhaustedError
+        from wallet_tracker.utils.retry import RetryExhaustedError, retry
 
         final_failure_data = {}
 
@@ -600,7 +558,7 @@ class TestRetryIntegration:
         api_responses = [
             ConnectionError("Network timeout"),
             ConnectionError("Connection refused"),
-            {"status": "success", "data": "api_data"}
+            {"status": "success", "data": "api_data"},
         ]
 
         @retry(max_attempts=3, delay=0.01, exceptions=[ConnectionError])
@@ -621,7 +579,7 @@ class TestRetryIntegration:
     @pytest.mark.asyncio
     async def test_retry_with_database_connection(self):
         """Test retry with simulated database connection."""
-        from wallet_tracker.utils.retry import retry, ExponentialBackoffStrategy
+        from wallet_tracker.utils.retry import ExponentialBackoffStrategy, retry
 
         connection_attempts = 0
 
@@ -629,7 +587,7 @@ class TestRetryIntegration:
             max_attempts=4,
             delay=0.01,
             backoff=ExponentialBackoffStrategy(initial_delay=0.01, multiplier=2.0),
-            exceptions=[ConnectionError]
+            exceptions=[ConnectionError],
         )
         async def connect_to_database():
             nonlocal connection_attempts
@@ -656,19 +614,15 @@ class TestRetryIntegration:
 
             if operation_id % 2 == 0:
                 # Even operations fail once then succeed
-                if not hasattr(flaky_operation, f'_called_{operation_id}'):
-                    setattr(flaky_operation, f'_called_{operation_id}', True)
+                if not hasattr(flaky_operation, f"_called_{operation_id}"):
+                    setattr(flaky_operation, f"_called_{operation_id}", True)
                     raise ConnectionError(f"Operation {operation_id} first failure")
 
             return f"Operation {operation_id} success"
 
         # Create multiple concurrent retry operations
         operations = [
-            RetryableOperation(
-                function=lambda op_id=i: flaky_operation(op_id),
-                max_attempts=3,
-                delay=0.01
-            )
+            RetryableOperation(function=lambda op_id=i: flaky_operation(op_id), max_attempts=3, delay=0.01)
             for i in range(5)
         ]
 
@@ -769,7 +723,7 @@ class TestRetryMetrics:
         api_perf = performance["api_call"]
         assert api_perf["total_operations"] == 3
         assert api_perf["average_attempts"] == 3.0  # (1+3+5)/3
-        assert api_perf["success_rate"] == 2/3
+        assert api_perf["success_rate"] == 2 / 3
 
     @pytest.mark.asyncio
     async def test_retry_alerting(self):
@@ -781,10 +735,7 @@ class TestRetryMetrics:
         def alert_handler(alert_data):
             alerts.append(alert_data)
 
-        alerting = RetryAlerting(
-            failure_threshold=2,
-            alert_handler=alert_handler
-        )
+        alerting = RetryAlerting(failure_threshold=2, alert_handler=alert_handler)
 
         @retry(max_attempts=2, delay=0.01, alerting=alerting)
         async def failing_service():
@@ -838,7 +789,7 @@ class TestRetryEdgeCases:
 
         # All calls should happen quickly (no delays)
         if len(call_times) > 1:
-            max_delay = max(call_times[i+1] - call_times[i] for i in range(len(call_times)-1))
+            max_delay = max(call_times[i + 1] - call_times[i] for i in range(len(call_times) - 1))
             assert max_delay < 0.01  # Should be very fast
 
     @pytest.mark.asyncio
@@ -894,6 +845,7 @@ class TestRetryEdgeCases:
 
         # Should handle invalid configurations gracefully
         with pytest.raises(ValueError):
+
             @retry(max_attempts=-1)  # Negative attempts
             async def invalid_config():
                 pass

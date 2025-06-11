@@ -2,13 +2,13 @@
 
 import asyncio
 import time
-import pytest
-from unittest.mock import patch, MagicMock
-from contextlib import asynccontextmanager
+from unittest.mock import MagicMock
 
+import pytest
 
 # Note: Tests assume performance.py module will be implemented
 # Currently the module is empty
+
 
 class TestPerformanceTimer:
     """Test performance timing utilities."""
@@ -296,6 +296,7 @@ class TestPerformanceMetrics:
         assert "events" in prometheus_format
 
         import json
+
         json_data = json.loads(json_format)
         assert "durations" in json_data
         assert "counters" in json_data
@@ -387,11 +388,7 @@ class TestPerformanceOptimization:
             processed_batches.append(list(items))
             return [f"processed_{item}" for item in items]
 
-        processor = BatchProcessor(
-            batch_size=3,
-            max_wait_time=0.1,
-            handler=batch_handler
-        )
+        processor = BatchProcessor(batch_size=3, max_wait_time=0.1, handler=batch_handler)
 
         # Add items individually
         processor.add_item("item1")
@@ -415,11 +412,7 @@ class TestPerformanceOptimization:
             processed_items.extend(items)
             return [f"async_{item}" for item in items]
 
-        processor = AsyncBatchProcessor(
-            batch_size=2,
-            max_wait_time=0.05,
-            handler=async_batch_handler
-        )
+        processor = AsyncBatchProcessor(batch_size=2, max_wait_time=0.05, handler=async_batch_handler)
 
         await processor.add_item("a")
         await processor.add_item("b")  # Should trigger batch
@@ -441,11 +434,7 @@ class TestPerformanceOptimization:
             created_connections.append(conn)
             return conn
 
-        pool = ConnectionPool(
-            factory=connection_factory,
-            max_size=3,
-            timeout=1.0
-        )
+        pool = ConnectionPool(factory=connection_factory, max_size=3, timeout=1.0)
 
         # Get connections
         conn1 = pool.get_connection()
@@ -575,10 +564,7 @@ class TestPerformanceBenchmarking:
         runner = BenchmarkRunner()
 
         # Run benchmarks
-        results = runner.benchmark({
-            "function_1": test_function_1,
-            "function_2": test_function_2
-        }, iterations=5)
+        results = runner.benchmark({"function_1": test_function_1, "function_2": test_function_2}, iterations=5)
 
         assert "function_1" in results
         assert "function_2" in results
@@ -601,10 +587,9 @@ class TestPerformanceBenchmarking:
 
         runner = AsyncBenchmarkRunner()
 
-        results = await runner.benchmark({
-            "async_function_1": async_function_1,
-            "async_function_2": async_function_2
-        }, iterations=3)
+        results = await runner.benchmark(
+            {"async_function_1": async_function_1, "async_function_2": async_function_2}, iterations=3
+        )
 
         assert "async_function_1" in results
         assert "async_function_2" in results
@@ -623,11 +608,7 @@ class TestPerformanceBenchmarking:
 
         tester = LoadTester(target_function)
 
-        results = tester.run_load_test(
-            concurrent_users=5,
-            duration_seconds=0.1,
-            ramp_up_time=0.01
-        )
+        results = tester.run_load_test(concurrent_users=5, duration_seconds=0.1, ramp_up_time=0.01)
 
         assert results["total_requests"] > 0
         assert results["requests_per_second"] > 0
@@ -649,10 +630,7 @@ class TestPerformanceBenchmarking:
 
         tester = AsyncLoadTester(async_target)
 
-        results = await tester.run_load_test(
-            concurrent_users=3,
-            duration_seconds=0.1
-        )
+        results = await tester.run_load_test(concurrent_users=3, duration_seconds=0.1)
 
         assert results["total_requests"] > 0
         assert results["requests_per_second"] > 0
@@ -664,11 +642,7 @@ class TestPerformanceIntegration:
     @pytest.mark.asyncio
     async def test_end_to_end_performance_monitoring(self):
         """Test complete performance monitoring workflow."""
-        from wallet_tracker.utils.performance import (
-            PerformanceMonitor,
-            Timer,
-            MetricsCollector
-        )
+        from wallet_tracker.utils.performance import PerformanceMonitor
 
         monitor = PerformanceMonitor()
 
@@ -719,6 +693,7 @@ class TestPerformanceIntegration:
         assert "api_call" in regression_report
         assert regression_report["api_call"]["regression_detected"] is True
         assert regression_report["api_call"]["percentage_change"] > 0
+
 
 # Note: This test file assumes the performance.py module will be implemented
 # with classes and functions for:

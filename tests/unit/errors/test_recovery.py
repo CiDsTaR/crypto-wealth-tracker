@@ -3,31 +3,27 @@
 import asyncio
 import json
 import tempfile
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from wallet_tracker.errors.exceptions import (
+    NetworkError,
+    ProcessingError,
+    RecoveryStrategy,
+    WalletTrackerError,
+)
 from wallet_tracker.errors.recovery import (
     # Main classes
     CheckpointData,
     CheckpointManager,
-    RecoveryManager,
     ProgressTracker,
+    RecoveryManager,
     RecoverySession,
-
+    create_recovery_context,
     # Utility functions
     with_checkpointing,
-    create_recovery_context,
-)
-
-from wallet_tracker.errors.exceptions import (
-    WalletTrackerError,
-    ErrorSeverity,
-    ErrorCategory,
-    RecoveryStrategy,
-    NetworkError,
-    ProcessingError,
 )
 
 
@@ -43,7 +39,7 @@ class TestCheckpointData:
             checkpoint_id="test_checkpoint_001",
             operation_name="batch_processing",
             state_data=state_data,
-            metadata=metadata
+            metadata=metadata,
         )
 
         assert checkpoint.checkpoint_id == "test_checkpoint_001"
@@ -59,10 +55,7 @@ class TestCheckpointData:
         metadata = {"version": "1.0"}
 
         checkpoint = CheckpointData(
-            checkpoint_id="serialize_test",
-            operation_name="test_op",
-            state_data=state_data,
-            metadata=metadata
+            checkpoint_id="serialize_test", operation_name="test_op", state_data=state_data, metadata=metadata
         )
 
         result = checkpoint.to_dict()
@@ -82,7 +75,7 @@ class TestCheckpointData:
             "state_data": {"progress": 75},
             "metadata": {"total": 100},
             "created_at": "2024-01-15T10:30:00+00:00",
-            "restored_count": 2
+            "restored_count": 2,
         }
 
         checkpoint = CheckpointData.from_dict(data)
@@ -111,17 +104,14 @@ class TestCheckpointManager:
             storage_path=temp_storage_path,
             max_checkpoints_per_operation=5,
             checkpoint_retention_hours=24,
-            auto_cleanup=True
+            auto_cleanup=True,
         )
 
     @pytest.fixture
     def memory_checkpoint_manager(self):
         """Create memory-only checkpoint manager."""
         return CheckpointManager(
-            storage_path=None,
-            max_checkpoints_per_operation=3,
-            checkpoint_retention_hours=1,
-            auto_cleanup=True
+            storage_path=None, max_checkpoints_per_operation=3, checkpoint_retention_hours=1, auto_cleanup=True
         )
 
     @pytest.mark.asyncio
@@ -131,9 +121,7 @@ class TestCheckpointManager:
         metadata = {"batch_id": "batch_001"}
 
         checkpoint_id = await checkpoint_manager.create_checkpoint(
-            operation_name="test_operation",
-            state_data=state_data,
-            metadata=metadata
+            operation_name="test_operation", state_data=state_data, metadata=metadata
         )
 
         assert checkpoint_id is not None
@@ -155,9 +143,7 @@ class TestCheckpointManager:
         state_data = {"data": "test"}
 
         checkpoint_id = await checkpoint_manager.create_checkpoint(
-            operation_name="custom_test",
-            state_data=state_data,
-            checkpoint_id=custom_id
+            operation_name="custom_test", state_data=state_data, checkpoint_id=custom_id
         )
 
         assert checkpoint_id == custom_id
@@ -168,10 +154,7 @@ class TestCheckpointManager:
         """Test checkpoint restoration."""
         # Create a checkpoint first
         state_data = {"progress": 75, "data": ["item1", "item2"]}
-        checkpoint_id = await checkpoint_manager.create_checkpoint(
-            operation_name="restore_test",
-            state_data=state_data
-        )
+        checkpoint_id = await checkpoint_manager.create_checkpoint(operation_name="restore_test", state_data=state_data)
 
         # Restore the checkpoint
         restored = await checkpoint_manager.restore_checkpoint(checkpoint_id)
@@ -197,8 +180,7 @@ class TestCheckpointManager:
         for i in range(3):
             state_data = {"iteration": i}
             checkpoint_id = await checkpoint_manager.create_checkpoint(
-                operation_name=operation_name,
-                state_data=state_data
+                operation_name=operation_name, state_data=state_data
             )
             checkpoint_ids.append(checkpoint_id)
             # Small delay to ensure different timestamps
@@ -241,9 +223,7 @@ class TestCheckpointManager:
     async def test_delete_checkpoint(self, checkpoint_manager):
         """Test checkpoint deletion."""
         # Create a checkpoint
-        checkpoint_id = await checkpoint_manager.create_checkpoint(
-            "delete_test", {"data": "to_delete"}
-        )
+        checkpoint_id = await checkpoint_manager.create_checkpoint("delete_test", {"data": "to_delete"})
 
         # Verify it exists
         assert checkpoint_id in checkpoint_manager._checkpoints
@@ -265,13 +245,11 @@ class TestCheckpointManager:
         # Create checkpoint manager with very short retention
         short_retention_manager = CheckpointManager(
             storage_path=None,
-            checkpoint_retention_hours=0.001  # Very short retention
+            checkpoint_retention_hours=0.001,  # Very short retention
         )
 
         # Create a checkpoint
-        checkpoint_id = await short_retention_manager.create_checkpoint(
-            "cleanup_test", {"data": "old"}
-        )
+        checkpoint_id = await short_retention_manager.create_checkpoint("cleanup_test", {"data": "old"})
 
         # Wait for it to become "old"
         await asyncio.sleep(0.01)
@@ -291,8 +269,7 @@ class TestCheckpointManager:
         checkpoint_ids = []
         for i in range(5):
             checkpoint_id = await memory_checkpoint_manager.create_checkpoint(
-                operation_name=operation_name,
-                state_data={"iteration": i}
+                operation_name=operation_name, state_data={"iteration": i}
             )
             checkpoint_ids.append(checkpoint_id)
 
@@ -309,9 +286,7 @@ class TestCheckpointManager:
         """Test file storage operations."""
         # Create checkpoint
         state_data = {"file_test": True, "data": [1, 2, 3]}
-        checkpoint_id = await checkpoint_manager.create_checkpoint(
-            "file_test", state_data
-        )
+        checkpoint_id = await checkpoint_manager.create_checkpoint("file_test", state_data)
 
         # Verify file was created
         storage_path = checkpoint_manager.storage_path
@@ -319,7 +294,7 @@ class TestCheckpointManager:
         assert checkpoint_file.exists()
 
         # Verify file content
-        with open(checkpoint_file, 'r') as f:
+        with open(checkpoint_file) as f:
             file_data = json.load(f)
 
         assert file_data["checkpoint_id"] == checkpoint_id
@@ -367,10 +342,7 @@ class TestRecoveryManager:
             strategy_called.append((error, operation_name))
             return "handled"
 
-        recovery_manager.register_recovery_strategy(
-            RecoveryStrategy.FALLBACK,
-            test_handler
-        )
+        recovery_manager.register_recovery_strategy(RecoveryStrategy.FALLBACK, test_handler)
 
         # Verify strategy is registered
         assert RecoveryStrategy.FALLBACK in recovery_manager._recovery_strategies
@@ -380,17 +352,12 @@ class TestRecoveryManager:
     async def test_attempt_recovery_retry_strategy(self, recovery_manager, checkpoint_manager):
         """Test recovery with retry strategy."""
         # Create a checkpoint first
-        await checkpoint_manager.create_checkpoint(
-            "retry_test", {"progress": 50}
-        )
+        await checkpoint_manager.create_checkpoint("retry_test", {"progress": 50})
 
         error = NetworkError("Network failed")
         error.recovery_strategy = RecoveryStrategy.RETRY
 
-        result = await recovery_manager.attempt_recovery(
-            error=error,
-            operation_name="retry_test"
-        )
+        result = await recovery_manager.attempt_recovery(error=error, operation_name="retry_test")
 
         assert result is not None
         assert result.state_data["progress"] == 50
@@ -404,18 +371,12 @@ class TestRecoveryManager:
             fallback_called.append((error, operation_name))
             return "fallback_result"
 
-        recovery_manager.register_recovery_strategy(
-            RecoveryStrategy.FALLBACK,
-            test_fallback
-        )
+        recovery_manager.register_recovery_strategy(RecoveryStrategy.FALLBACK, test_fallback)
 
         error = ProcessingError("Processing failed")
         error.recovery_strategy = RecoveryStrategy.FALLBACK
 
-        result = await recovery_manager.attempt_recovery(
-            error=error,
-            operation_name="fallback_test"
-        )
+        result = await recovery_manager.attempt_recovery(error=error, operation_name="fallback_test")
 
         assert len(fallback_called) == 1
         assert fallback_called[0][0] == error
@@ -425,17 +386,12 @@ class TestRecoveryManager:
     async def test_attempt_recovery_skip_strategy(self, recovery_manager, checkpoint_manager):
         """Test recovery with skip strategy."""
         # Create a checkpoint
-        await checkpoint_manager.create_checkpoint(
-            "skip_test", {"items": ["item1", "item2"]}
-        )
+        await checkpoint_manager.create_checkpoint("skip_test", {"items": ["item1", "item2"]})
 
         error = WalletTrackerError("Item failed")
         error.recovery_strategy = RecoveryStrategy.SKIP
 
-        result = await recovery_manager.attempt_recovery(
-            error=error,
-            operation_name="skip_test"
-        )
+        result = await recovery_manager.attempt_recovery(error=error, operation_name="skip_test")
 
         assert result is not None
         assert result.metadata["recovery_type"] == "skip"
@@ -502,7 +458,7 @@ class TestProgressTracker:
             operation_name="progress_test",
             total_items=100,
             checkpoint_manager=checkpoint_manager,
-            checkpoint_interval=10
+            checkpoint_interval=10,
         )
 
     def test_initial_state(self, progress_tracker):
@@ -519,12 +475,7 @@ class TestProgressTracker:
     async def test_update_progress(self, progress_tracker):
         """Test progress updates."""
         # Update progress
-        await progress_tracker.update_progress(
-            processed=5,
-            failed=1,
-            skipped=2,
-            item_data={"item_id": "test_001"}
-        )
+        await progress_tracker.update_progress(processed=5, failed=1, skipped=2, item_data={"item_id": "test_001"})
 
         assert progress_tracker.processed_items == 5
         assert progress_tracker.failed_items == 1
@@ -542,9 +493,7 @@ class TestProgressTracker:
         assert progress_tracker.last_checkpoint_id is not None
 
         # Verify checkpoint exists
-        checkpoint = await progress_tracker.checkpoint_manager.restore_checkpoint(
-            progress_tracker.last_checkpoint_id
-        )
+        checkpoint = await progress_tracker.checkpoint_manager.restore_checkpoint(progress_tracker.last_checkpoint_id)
         assert checkpoint is not None
         assert checkpoint.state_data["processed_items"] == 10
 
@@ -560,12 +509,10 @@ class TestProgressTracker:
             "skipped_items": 2,
             "start_time": datetime.now(UTC).isoformat(),
             "processed_batches": [{"batch": 1}, {"batch": 2}],
-            "failed_items_list": [{"item": "failed_001"}]
+            "failed_items_list": [{"item": "failed_001"}],
         }
 
-        checkpoint_id = await checkpoint_manager.create_checkpoint(
-            "progress_test", checkpoint_data
-        )
+        checkpoint_id = await checkpoint_manager.create_checkpoint("progress_test", checkpoint_data)
 
         # Restore progress
         restored = await progress_tracker.restore_from_checkpoint(checkpoint_id)
@@ -636,10 +583,17 @@ class TestProgressTracker:
         summary = progress_tracker.get_progress_summary()
 
         expected_keys = [
-            "operation_name", "total_items", "processed_items",
-            "failed_items", "skipped_items", "progress_percent",
-            "processing_rate", "failure_rate", "estimated_completion",
-            "elapsed_time", "last_checkpoint_id"
+            "operation_name",
+            "total_items",
+            "processed_items",
+            "failed_items",
+            "skipped_items",
+            "progress_percent",
+            "processing_rate",
+            "failure_rate",
+            "estimated_completion",
+            "elapsed_time",
+            "last_checkpoint_id",
         ]
 
         for key in expected_keys:
@@ -669,11 +623,11 @@ class TestRecoverySession:
         session_result = None
 
         async with RecoverySession(
-                operation_name="session_test",
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager,
-                total_items=50,
-                checkpoint_interval=5
+            operation_name="session_test",
+            checkpoint_manager=checkpoint_manager,
+            recovery_manager=recovery_manager,
+            total_items=50,
+            checkpoint_interval=5,
         ) as session:
             session_result = session
 
@@ -690,11 +644,11 @@ class TestRecoverySession:
     async def test_recovery_session_with_progress_tracking(self, checkpoint_manager, recovery_manager):
         """Test recovery session with progress tracking."""
         async with RecoverySession(
-                operation_name="progress_session",
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager,
-                total_items=20,
-                checkpoint_interval=5
+            operation_name="progress_session",
+            checkpoint_manager=checkpoint_manager,
+            recovery_manager=recovery_manager,
+            total_items=20,
+            checkpoint_interval=5,
         ) as session:
             # Update progress
             await session.update_progress(processed=10, failed=2)
@@ -709,15 +663,10 @@ class TestRecoverySession:
     async def test_recovery_session_manual_checkpoint(self, checkpoint_manager, recovery_manager):
         """Test manual checkpointing in recovery session."""
         async with RecoverySession(
-                operation_name="manual_checkpoint",
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager
+            operation_name="manual_checkpoint", checkpoint_manager=checkpoint_manager, recovery_manager=recovery_manager
         ) as session:
             # Create manual checkpoint
-            checkpoint_id = await session.checkpoint(
-                state_data={"custom": "data"},
-                metadata={"type": "manual"}
-            )
+            checkpoint_id = await session.checkpoint(state_data={"custom": "data"}, metadata={"type": "manual"})
 
             assert checkpoint_id is not None
 
@@ -738,10 +687,10 @@ class TestRecoverySession:
 
         # Start session with auto_restore
         async with RecoverySession(
-                operation_name=operation_name,
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager,
-                auto_restore=True
+            operation_name=operation_name,
+            checkpoint_manager=checkpoint_manager,
+            recovery_manager=recovery_manager,
+            auto_restore=True,
         ) as session:
             # Check that recovery context indicates restoration
             assert session.recovery_context["recovered_from_checkpoint"] is True
@@ -758,9 +707,7 @@ class TestUtilityFunctions:
         checkpoints_created = []
 
         @with_checkpointing(
-            checkpoint_manager=checkpoint_manager,
-            operation_name="decorated_function",
-            checkpoint_interval=5
+            checkpoint_manager=checkpoint_manager, operation_name="decorated_function", checkpoint_interval=5
         )
         async def test_function(progress_tracker=None):
             if progress_tracker:
@@ -784,7 +731,7 @@ class TestUtilityFunctions:
             operation_name="context_test",
             checkpoint_manager=checkpoint_manager,
             recovery_manager=recovery_manager,
-            auto_restore=True
+            auto_restore=True,
         )
 
         assert context["operation_name"] == "context_test"
@@ -800,17 +747,14 @@ class TestUtilityFunctions:
         recovery_manager = RecoveryManager(checkpoint_manager)
 
         # Create an existing checkpoint
-        await checkpoint_manager.create_checkpoint(
-            "existing_context_test",
-            {"existing": "data"}
-        )
+        await checkpoint_manager.create_checkpoint("existing_context_test", {"existing": "data"})
 
         # Create context with auto_restore
         context = await create_recovery_context(
             operation_name="existing_context_test",
             checkpoint_manager=checkpoint_manager,
             recovery_manager=recovery_manager,
-            auto_restore=True
+            auto_restore=True,
         )
 
         assert context["recovered_from_checkpoint"] is True
@@ -831,13 +775,12 @@ class TestIntegrationScenarios:
         processed_items = []
 
         async with RecoverySession(
-                operation_name="full_workflow",
-                checkpoint_manager=checkpoint_manager,
-                recovery_manager=recovery_manager,
-                total_items=30,
-                checkpoint_interval=10
+            operation_name="full_workflow",
+            checkpoint_manager=checkpoint_manager,
+            recovery_manager=recovery_manager,
+            total_items=30,
+            checkpoint_interval=10,
         ) as session:
-
             # Process items with simulated failure and recovery
             for i in range(30):
                 try:
@@ -853,10 +796,7 @@ class TestIntegrationScenarios:
                     await session.update_progress(failed=1)
 
                     # Simulate recovery attempt
-                    recovery_result = await recovery_manager.attempt_recovery(
-                        error=e,
-                        operation_name="full_workflow"
-                    )
+                    recovery_result = await recovery_manager.attempt_recovery(error=e, operation_name="full_workflow")
 
                     # Continue processing after recovery
                     if recovery_result:
@@ -882,8 +822,7 @@ class TestIntegrationScenarios:
             checkpoint_manager1 = CheckpointManager(storage_path=storage_path)
 
             checkpoint_id = await checkpoint_manager1.create_checkpoint(
-                "persistent_test",
-                {"session": 1, "data": "persistent_data"}
+                "persistent_test", {"session": 1, "data": "persistent_data"}
             )
 
             # Second session - should load from file
@@ -898,6 +837,7 @@ class TestIntegrationScenarios:
         finally:
             # Cleanup
             import shutil
+
             shutil.rmtree(temp_dir)
 
     @pytest.mark.asyncio
@@ -910,7 +850,7 @@ class TestIntegrationScenarios:
             operation_name="small_interval",
             total_items=50,
             checkpoint_manager=checkpoint_manager,
-            checkpoint_interval=5
+            checkpoint_interval=5,
         )
 
         # Process items
@@ -935,22 +875,15 @@ class TestIntegrationScenarios:
             custom_recoveries.append((error, operation_name))
             # Create a recovery checkpoint
             return await checkpoint_manager.create_checkpoint(
-                operation_name,
-                {"recovery_type": "custom", "error_handled": str(error)}
+                operation_name, {"recovery_type": "custom", "error_handled": str(error)}
             )
 
-        recovery_manager.register_recovery_strategy(
-            RecoveryStrategy.FALLBACK,
-            custom_fallback
-        )
+        recovery_manager.register_recovery_strategy(RecoveryStrategy.FALLBACK, custom_fallback)
 
         # Simulate error and recovery
         error = ProcessingError("Custom error", recovery_strategy=RecoveryStrategy.FALLBACK)
 
-        result = await recovery_manager.attempt_recovery(
-            error=error,
-            operation_name="custom_recovery_test"
-        )
+        result = await recovery_manager.attempt_recovery(error=error, operation_name="custom_recovery_test")
 
         assert len(custom_recoveries) == 1
         assert isinstance(result, str)  # Should be checkpoint_id

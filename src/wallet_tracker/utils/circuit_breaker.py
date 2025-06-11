@@ -3,15 +3,16 @@
 import asyncio
 import logging
 import time
-from contextlib import asynccontextmanager
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class CircuitState(Enum):
     """Circuit breaker states."""
+
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Circuit is open, failing fast
     HALF_OPEN = "half_open"  # Testing if service recovered
@@ -29,20 +30,20 @@ class CircuitBreaker:
     """Circuit breaker for handling service failures gracefully."""
 
     def __init__(
-            self,
-            failure_threshold: int = 5,
-            recovery_timeout: float = 60.0,
-            expected_exception: Type[Exception] = Exception,
-            success_threshold: int = 1,
-            name: str = "circuit_breaker",
-            fallback: Optional[Callable] = None,
-            health_check: Optional[Callable] = None,
-            call_timeout: Optional[float] = None,
-            retry_attempts: int = 0,
-            retry_delay: float = 0.1,
-            on_state_change: Optional[Callable] = None,
-            on_failure: Optional[Callable] = None,
-            on_success: Optional[Callable] = None
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0,
+        expected_exception: type[Exception] = Exception,
+        success_threshold: int = 1,
+        name: str = "circuit_breaker",
+        fallback: Callable | None = None,
+        health_check: Callable | None = None,
+        call_timeout: float | None = None,
+        retry_attempts: int = 0,
+        retry_delay: float = 0.1,
+        on_state_change: Callable | None = None,
+        on_failure: Callable | None = None,
+        on_success: Callable | None = None,
     ):
         """Initialize circuit breaker.
 
@@ -149,9 +150,8 @@ class CircuitBreaker:
                 try:
                     if self.call_timeout:
                         result = await asyncio.wait_for(
-                            func(*args, **kwargs) if asyncio.iscoroutinefunction(func)
-                            else func(*args, **kwargs),
-                            timeout=self.call_timeout
+                            func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs),
+                            timeout=self.call_timeout,
                         )
                     else:
                         if asyncio.iscoroutinefunction(func):
@@ -300,7 +300,7 @@ class CircuitBreaker:
         self._last_failure_time = time.time()
         logger.info(f"Circuit breaker '{self.name}' manually opened")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get circuit breaker statistics."""
         failure_rate = 0.0
         if self._total_calls > 0:
@@ -316,7 +316,7 @@ class CircuitBreaker:
             "total_successes": self._total_successes,
             "failure_rate": round(failure_rate, 2),
             "last_failure_time": self._last_failure_time,
-            "recovery_timeout": self.recovery_timeout
+            "recovery_timeout": self.recovery_timeout,
         }
 
     async def __aenter__(self):
@@ -333,14 +333,10 @@ class CircuitBreakerManager:
 
     def __init__(self):
         """Initialize circuit breaker manager."""
-        self._breakers: Dict[str, CircuitBreaker] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
 
     def register(
-            self,
-            name: str,
-            failure_threshold: int = 5,
-            recovery_timeout: float = 60.0,
-            **kwargs
+        self, name: str, failure_threshold: int = 5, recovery_timeout: float = 60.0, **kwargs
     ) -> CircuitBreaker:
         """Register a new circuit breaker.
 
@@ -354,10 +350,7 @@ class CircuitBreakerManager:
             Created circuit breaker
         """
         breaker = CircuitBreaker(
-            failure_threshold=failure_threshold,
-            recovery_timeout=recovery_timeout,
-            name=name,
-            **kwargs
+            failure_threshold=failure_threshold, recovery_timeout=recovery_timeout, name=name, **kwargs
         )
         self._breakers[name] = breaker
         return breaker
@@ -382,16 +375,13 @@ class CircuitBreakerManager:
 
         return await self._breakers[name].call(func, *args, **kwargs)
 
-    def get_breaker(self, name: str) -> Optional[CircuitBreaker]:
+    def get_breaker(self, name: str) -> CircuitBreaker | None:
         """Get circuit breaker by name."""
         return self._breakers.get(name)
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> dict[str, dict[str, Any]]:
         """Get statistics for all circuit breakers."""
-        return {
-            name: breaker.get_stats()
-            for name, breaker in self._breakers.items()
-        }
+        return {name: breaker.get_stats() for name, breaker in self._breakers.items()}
 
     def reset_all(self):
         """Reset all circuit breakers."""
@@ -404,10 +394,10 @@ class CircuitBreakerManager:
 
 
 def circuit_breaker(
-        failure_threshold: int = 5,
-        recovery_timeout: float = 60.0,
-        expected_exception: Type[Exception] = Exception,
-        **kwargs
+    failure_threshold: int = 5,
+    recovery_timeout: float = 60.0,
+    expected_exception: type[Exception] = Exception,
+    **kwargs,
 ):
     """Decorator for circuit breaker functionality.
 
@@ -427,15 +417,17 @@ def circuit_breaker(
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
             name=f"{func.__module__}.{func.__name__}",
-            **kwargs
+            **kwargs,
         )
 
         if asyncio.iscoroutinefunction(func):
+
             async def async_wrapper(*args, **kwargs):
                 return await breaker.call(func, *args, **kwargs)
 
             return async_wrapper
         else:
+
             def sync_wrapper(*args, **kwargs):
                 return asyncio.run(breaker.call(func, *args, **kwargs))
 

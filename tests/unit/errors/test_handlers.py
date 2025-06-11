@@ -1,54 +1,47 @@
 """Tests for error handlers module."""
 
-import asyncio
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
 import pytest
-from datetime import datetime, timedelta, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from wallet_tracker.errors.handlers import (
-    # Main classes
-    ErrorHandler,
-    APIErrorHandler,
-    NetworkErrorHandler,
-    ProcessingErrorHandler,
-
-    # Circuit breaker
-    CircuitBreaker,
-    CircuitState,
-    CircuitBreakerOpenError,
-
-    # Error statistics
-    ErrorStats,
-    ErrorReport,
-
-    # Global handlers
-    get_global_error_handler,
-    get_api_error_handler,
-    get_network_error_handler,
-    get_processing_error_handler,
-
-    # Decorators and context managers
-    handle_errors,
-    error_context,
-
-    # Utility functions
-    handle_and_log_error,
-    setup_error_logging,
-    setup_error_callbacks,
-
-    # Specialized errors
-    RetryExhaustedError,
-    ErrorHandlerError,
-)
 
 from wallet_tracker.errors.exceptions import (
-    WalletTrackerError,
-    ErrorSeverity,
-    ErrorCategory,
-    RecoveryStrategy,
-    NetworkError,
     APIError,
+    ErrorCategory,
+    ErrorSeverity,
+    NetworkError,
     RateLimitError,
+    RecoveryStrategy,
+    WalletTrackerError,
+)
+from wallet_tracker.errors.handlers import (
+    APIErrorHandler,
+    # Circuit breaker
+    CircuitBreaker,
+    CircuitBreakerOpenError,
+    CircuitState,
+    # Main classes
+    ErrorHandler,
+    ErrorHandlerError,
+    ErrorReport,
+    # Error statistics
+    ErrorStats,
+    NetworkErrorHandler,
+    ProcessingErrorHandler,
+    # Specialized errors
+    RetryExhaustedError,
+    error_context,
+    get_api_error_handler,
+    # Global handlers
+    get_global_error_handler,
+    get_network_error_handler,
+    get_processing_error_handler,
+    # Utility functions
+    handle_and_log_error,
+    # Decorators and context managers
+    handle_errors,
+    setup_error_callbacks,
+    setup_error_logging,
 )
 
 
@@ -63,7 +56,7 @@ class TestErrorHandler:
             base_delay=0.1,  # Short delay for testing
             max_delay=1.0,
             jitter=False,  # Disable jitter for predictable tests
-            enable_circuit_breaker=True
+            enable_circuit_breaker=True,
         )
 
     @pytest.mark.asyncio
@@ -72,9 +65,7 @@ class TestErrorHandler:
         original_error = ValueError("Test error")
 
         result = await error_handler.handle_error(
-            error=original_error,
-            context={"test": "context"},
-            operation_name="test_operation"
+            error=original_error, context={"test": "context"}, operation_name="test_operation"
         )
 
         assert isinstance(result, WalletTrackerError)
@@ -87,10 +78,7 @@ class TestErrorHandler:
         """Test handling WalletTrackerError directly."""
         original_error = NetworkError("Network failed")
 
-        result = await error_handler.handle_error(
-            error=original_error,
-            operation_name="network_test"
-        )
+        result = await error_handler.handle_error(error=original_error, operation_name="network_test")
 
         assert result == original_error
         assert result.context["operation"] == "network_test"
@@ -114,10 +102,7 @@ class TestErrorHandler:
         async def test_recovery(error):
             callback_called.append(error)
 
-        error_handler.register_recovery_callback(
-            RecoveryStrategy.FALLBACK,
-            test_recovery
-        )
+        error_handler.register_recovery_callback(RecoveryStrategy.FALLBACK, test_recovery)
 
         # Verify callback is registered
         assert test_recovery in error_handler._recovery_callbacks[RecoveryStrategy.FALLBACK]
@@ -159,10 +144,7 @@ class TestErrorHandler:
             async with error_handler.handle_operation("non_retryable_test") as attempt:
                 attempts.append(attempt)
                 # Raise non-retryable error
-                raise WalletTrackerError(
-                    "Non-retryable error",
-                    recovery_strategy=RecoveryStrategy.NONE
-                )
+                raise WalletTrackerError("Non-retryable error", recovery_strategy=RecoveryStrategy.NONE)
 
         # Should only attempt once
         assert len(attempts) == 1
@@ -233,7 +215,7 @@ class TestCircuitBreaker:
         return CircuitBreaker(
             failure_threshold=3,
             recovery_timeout=1.0,  # Short timeout for testing
-            expected_exception=Exception
+            expected_exception=Exception,
         )
 
     def test_initial_state(self, circuit_breaker):
@@ -339,11 +321,7 @@ class TestErrorStats:
 
     def test_record_error(self, error_stats):
         """Test recording error occurrence."""
-        error = WalletTrackerError(
-            "Test error",
-            severity=ErrorSeverity.HIGH,
-            context={"key": "value", "type": "test"}
-        )
+        error = WalletTrackerError("Test error", severity=ErrorSeverity.HIGH, context={"key": "value", "type": "test"})
 
         error_stats.record_error(error)
 
@@ -546,9 +524,7 @@ class TestUtilityFunctions:
         original_error = ValueError("Test error")
 
         result = await handle_and_log_error(
-            error=original_error,
-            operation_name="test_operation",
-            context={"test": "data"}
+            error=original_error, operation_name="test_operation", context={"test": "data"}
         )
 
         assert isinstance(result, WalletTrackerError)
@@ -563,7 +539,8 @@ class TestUtilityFunctions:
 
         # Verify logger exists
         import logging
-        logger = logging.getLogger('wallet_tracker.errors')
+
+        logger = logging.getLogger("wallet_tracker.errors")
         assert logger is not None
 
     def test_setup_error_callbacks(self):
@@ -583,11 +560,7 @@ class TestSpecializedErrors:
         """Test RetryExhaustedError."""
         last_error = ValueError("Last attempt failed")
 
-        error = RetryExhaustedError(
-            operation_name="test_operation",
-            attempts=3,
-            last_error=last_error
-        )
+        error = RetryExhaustedError(operation_name="test_operation", attempts=3, last_error=last_error)
 
         assert error.severity == ErrorSeverity.HIGH
         assert error.category == ErrorCategory.SYSTEM_RESOURCE
@@ -627,16 +600,12 @@ class TestErrorReport:
 
         # Add some data to stats
         network_error = WalletTrackerError(
-            "Network timeout",
-            severity=ErrorSeverity.MEDIUM,
-            category=ErrorCategory.NETWORK
+            "Network timeout", severity=ErrorSeverity.MEDIUM, category=ErrorCategory.NETWORK
         )
         handler._error_stats["network:timeout"].record_error(network_error)
 
         api_error = WalletTrackerError(
-            "Rate limit exceeded",
-            severity=ErrorSeverity.HIGH,
-            category=ErrorCategory.API_LIMIT
+            "Rate limit exceeded", severity=ErrorSeverity.HIGH, category=ErrorCategory.API_LIMIT
         )
         handler._error_stats["api:rate_limit"].record_error(api_error)
         handler._error_stats["api:rate_limit"].record_error(api_error)  # Record twice
@@ -667,7 +636,7 @@ class TestErrorReport:
         handler._error_stats["high_rate:error"] = ErrorStats()
 
         # Mock the hourly rate to be high
-        with patch.object(handler._error_stats["high_rate:error"], 'get_hourly_rate', return_value=15):
+        with patch.object(handler._error_stats["high_rate:error"], "get_hourly_rate", return_value=15):
             report = ErrorReport(handler)
             recommendations = report.get_recommendations()
 
@@ -716,11 +685,7 @@ class TestIntegrationScenarios:
     @pytest.mark.asyncio
     async def test_circuit_breaker_integration(self):
         """Test circuit breaker integration with error handling."""
-        handler = ErrorHandler(
-            max_retries=1,
-            base_delay=0.01,
-            enable_circuit_breaker=True
-        )
+        handler = ErrorHandler(max_retries=1, base_delay=0.01, enable_circuit_breaker=True)
 
         # Get circuit breaker and set low threshold for testing
         cb = handler._get_circuit_breaker("cb_test")
@@ -752,7 +717,7 @@ class TestIntegrationScenarios:
             NetworkError("Network timeout"),
             APIError("API failed"),
             NetworkError("Network connection lost"),
-            RateLimitError("Rate limited")
+            RateLimitError("Rate limited"),
         ]
 
         for error in errors:

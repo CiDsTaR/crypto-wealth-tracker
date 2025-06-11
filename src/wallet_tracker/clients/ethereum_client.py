@@ -1,10 +1,10 @@
 """Enhanced Ethereum client with better error handling and address validation."""
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, List, Dict
-import asyncio
+from typing import Any
 
 import aiohttp
 from asyncio_throttle import Throttler
@@ -29,26 +29,31 @@ logger = logging.getLogger(__name__)
 
 class EthereumClientError(Exception):
     """Base exception for Ethereum client errors."""
+
     pass
 
 
 class InvalidAddressError(EthereumClientError):
     """Invalid Ethereum address error."""
+
     pass
 
 
 class APIError(EthereumClientError):
     """API request error."""
+
     pass
 
 
 class RateLimitError(EthereumClientError):
     """Rate limit error."""
+
     pass
 
 
 class ServiceUnavailableError(EthereumClientError):
     """Service temporarily unavailable error."""
+
     pass
 
 
@@ -60,7 +65,7 @@ class EthereumClient:
         config: EthereumConfig,
         cache_manager: CacheManager | None = None,
         session: aiohttp.ClientSession | None = None,
-        coingecko_client = None,  # Accept CoinGecko client for price data
+        coingecko_client=None,  # Accept CoinGecko client for price data
     ):
         """Initialize Ethereum client."""
         self.config = config
@@ -113,6 +118,7 @@ class EthereumClient:
         if self._session is None:
             # Configure SSL context to be more tolerant
             import ssl
+
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE  # Only for development/testing
@@ -124,13 +130,13 @@ class EthereumClient:
                 ttl_dns_cache=300,  # DNS cache TTL
                 use_dns_cache=True,
                 keepalive_timeout=30,  # Keep connections alive
-                enable_cleanup_closed=True  # Clean up closed connections
+                enable_cleanup_closed=True,  # Clean up closed connections
             )
 
             timeout = aiohttp.ClientTimeout(
                 total=60,  # Increased total timeout
                 connect=15,  # Connection timeout
-                sock_read=30  # Socket read timeout
+                sock_read=30,  # Socket read timeout
             )
 
             self._session = aiohttp.ClientSession(
@@ -142,7 +148,7 @@ class EthereumClient:
                     "Connection": "keep-alive",
                 },
                 # Add retry configuration
-                raise_for_status=False  # Handle status codes manually
+                raise_for_status=False,  # Handle status codes manually
             )
         return self._session
 
@@ -184,8 +190,10 @@ class EthereumClient:
                 self._stats["service_unavailable_errors"] += 1
 
                 if attempt < retry_count:
-                    delay = self.retry_delay * (self.backoff_multiplier ** attempt)
-                    logger.warning(f"⚠️ Service unavailable (attempt {attempt + 1}/{retry_count + 1}), retrying in {delay:.1f}s")
+                    delay = self.retry_delay * (self.backoff_multiplier**attempt)
+                    logger.warning(
+                        f"⚠️ Service unavailable (attempt {attempt + 1}/{retry_count + 1}), retrying in {delay:.1f}s"
+                    )
                     await asyncio.sleep(delay)
                     continue
                 else:
@@ -207,8 +215,10 @@ class EthereumClient:
             except APIError as e:
                 # Don't retry on general API errors unless it's a temporary issue
                 if "unable to complete" in str(e).lower() and attempt < retry_count:
-                    delay = self.retry_delay * (self.backoff_multiplier ** attempt)
-                    logger.warning(f"⚠️ Temporary API error (attempt {attempt + 1}/{retry_count + 1}), retrying in {delay:.1f}s")
+                    delay = self.retry_delay * (self.backoff_multiplier**attempt)
+                    logger.warning(
+                        f"⚠️ Temporary API error (attempt {attempt + 1}/{retry_count + 1}), retrying in {delay:.1f}s"
+                    )
                     await asyncio.sleep(delay)
                     continue
                 else:
@@ -219,7 +229,6 @@ class EthereumClient:
             raise last_exception
         else:
             raise APIError("All retry attempts failed")
-
 
     async def _make_single_request(
         self,
@@ -238,7 +247,7 @@ class EthereumClient:
                 async with session.get(url, params=data) as response:
                     return await self._handle_response(response)
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise APIError(f"Request timeout: {e}")
         except Exception as e:
             self._stats["api_errors"] += 1
@@ -290,7 +299,7 @@ class EthereumClient:
             error_text = await response.text()
             raise APIError(f"HTTP {response.status}: {error_text}")
 
-    def _validate_and_filter_addresses(self, addresses: List[str]) -> List[str]:
+    def _validate_and_filter_addresses(self, addresses: list[str]) -> list[str]:
         """Validate and filter a list of addresses, removing invalid ones."""
         valid_addresses = []
 
@@ -310,7 +319,7 @@ class EthereumClient:
                 continue
 
             # Check if it starts with 0x
-            if not addr.startswith('0x'):
+            if not addr.startswith("0x"):
                 logger.warning(f"⚠️ Skipping address without 0x prefix at index {i}: {addr}")
                 continue
 
@@ -329,7 +338,9 @@ class EthereumClient:
 
         if len(valid_addresses) != len(addresses):
             removed_count = len(addresses) - len(valid_addresses)
-            logger.info(f"🔍 Address validation: {len(valid_addresses)} valid, {removed_count} invalid/incomplete removed")
+            logger.info(
+                f"🔍 Address validation: {len(valid_addresses)} valid, {removed_count} invalid/incomplete removed"
+            )
 
         return valid_addresses
 
@@ -348,7 +359,9 @@ class EthereumClient:
 
         # Check if address is complete
         if len(normalized_address) != 42:
-            raise InvalidAddressError(f"Incomplete Ethereum address: {wallet_address} (length: {len(normalized_address)})")
+            raise InvalidAddressError(
+                f"Incomplete Ethereum address: {wallet_address} (length: {len(normalized_address)})"
+            )
 
         # Check cache first
         cache_key = f"portfolio:{normalized_address}"
@@ -411,12 +424,7 @@ class EthereumClient:
             eth_balance = await self._get_eth_balance(wallet_address)
         except Exception:
             # Even ETH balance failed, create minimal response
-            eth_balance = EthBalance(
-                balance_wei="0x0",
-                balance_eth=Decimal("0"),
-                price_usd=None,
-                value_usd=None
-            )
+            eth_balance = EthBalance(balance_wei="0x0", balance_eth=Decimal("0"), price_usd=None, value_usd=None)
 
         # Create minimal activity
         activity = WalletActivity(
@@ -510,9 +518,10 @@ class EthereumClient:
             if include_metadata and token_data:
                 # Filter out zero balances and invalid addresses
                 non_zero_tokens = [
-                    token for token in token_data
-                    if token.get("tokenBalance", "0x0") != "0x0" and
-                    is_valid_ethereum_address(token.get("contractAddress", ""))
+                    token
+                    for token in token_data
+                    if token.get("tokenBalance", "0x0") != "0x0"
+                    and is_valid_ethereum_address(token.get("contractAddress", ""))
                 ]
 
                 if non_zero_tokens:
@@ -612,7 +621,7 @@ class EthereumClient:
             batch_size = 1  # Smaller batches to avoid issues
 
             for i in range(0, len(uncached_addresses), batch_size):
-                batch = uncached_addresses[i:i + batch_size]
+                batch = uncached_addresses[i : i + batch_size]
 
                 try:
                     logger.debug(f"🔍 Fetching metadata for {len(batch)} tokens")
@@ -621,15 +630,10 @@ class EthereumClient:
                         "id": 1,
                         "jsonrpc": "2.0",
                         "method": "alchemy_getTokenMetadata",
-                        "params": batch  # Array of contract addresses
+                        "params": batch,  # Array of contract addresses
                     }
 
-                    response = await self._make_request_with_retry(
-                        "POST",
-                        self.metadata_url,
-                        data=data,
-                        max_retries=2
-                    )
+                    response = await self._make_request_with_retry("POST", self.metadata_url, data=data, max_retries=2)
 
                     self._stats["metadata_requests"] += 1
 
@@ -671,8 +675,7 @@ class EthereumClient:
 
             # Use CoinGecko client to get prices by contract addresses
             price_data = await self.coingecko_client.get_token_prices_by_contracts(
-                contract_addresses=contract_addresses,
-                include_market_data=False
+                contract_addresses=contract_addresses, include_market_data=False
             )
 
             # Convert to the format expected by the rest of the code

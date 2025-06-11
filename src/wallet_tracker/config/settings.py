@@ -87,7 +87,9 @@ class Settings:
     def _build_coingecko_config(self) -> CoinGeckoConfig:
         """Build CoinGecko configuration from environment variables."""
         return CoinGeckoConfig(
-            api_key=self._get_env("COINGECKO_PRO_API_KEY") if self._get_env("COINGECKO_PRO_API_KEY") else self._get_env("COINGECKO_DEMO_API_KEY"),
+            api_key=self._get_env("COINGECKO_PRO_API_KEY")
+            if self._get_env("COINGECKO_PRO_API_KEY")
+            else self._get_env("COINGECKO_DEMO_API_KEY"),
             base_url=self._get_env("COINGECKO_BASE_URL", "https://api.coingecko.com/api/v3"),
             rate_limit=int(self._get_env("COINGECKO_RATE_LIMIT", 30)),
             is_pro=True if self._get_env("COINGECKO_PRO_API_KEY") else False,
@@ -95,8 +97,9 @@ class Settings:
 
     def _build_google_sheets_config(self) -> GoogleSheetsConfig:
         """Build Google Sheets configuration from environment variables."""
-        credentials_file = Path(Path(__file__).parent.parent.resolve() /
-            self._get_env(
+        credentials_file = Path(
+            Path(__file__).parent.parent.resolve()
+            / self._get_env(
                 "GOOGLE_SHEETS_CREDENTIALS_FILE",
                 "config/google_sheets_credentials.json",
             )

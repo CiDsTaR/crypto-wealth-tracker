@@ -4,27 +4,27 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from wallet_tracker.clients import (
     CoinGeckoClient,
+    EthBalance,
     EthereumClient,
     GoogleSheetsClient,
     InvalidAddressError,
-    WalletPortfolio,
-    EthBalance,
     TokenBalance,
+    WalletPortfolio,
 )
-from wallet_tracker.config import AppConfig, EthereumConfig, CoinGeckoConfig, GoogleSheetsConfig
+from wallet_tracker.config import AppConfig, CoinGeckoConfig, EthereumConfig, GoogleSheetsConfig
 from wallet_tracker.processors import BatchProcessor, BatchProcessorError
-from wallet_tracker.processors.batch_types import BatchConfig, QueuePriority, ResourceLimits
+from wallet_tracker.processors.batch_types import BatchConfig
 from wallet_tracker.processors.wallet_types import (
     ProcessingResults,
+    SkipReason,
     WalletProcessingJob,
     WalletStatus,
-    SkipReason,
 )
 from wallet_tracker.utils import CacheManager
 
@@ -40,11 +40,7 @@ class TestBatchProcessor:
         creds_file.write_text('{"type": "service_account"}')
 
         return AppConfig(
-            ethereum=EthereumConfig(
-                alchemy_api_key="test_key",
-                rpc_url="https://test.com",
-                rate_limit=100
-            ),
+            ethereum=EthereumConfig(alchemy_api_key="test_key", rpc_url="https://test.com", rate_limit=100),
             coingecko=CoinGeckoConfig(),
             google_sheets=GoogleSheetsConfig(credentials_file=creds_file),
             processing=MagicMock(
@@ -53,7 +49,7 @@ class TestBatchProcessor:
                 request_delay=0.01,
                 retry_attempts=2,
                 inactive_wallet_threshold_days=365,
-            )
+            ),
         )
 
     @pytest.fixture
@@ -78,7 +74,7 @@ class TestBatchProcessor:
                 balance_wei="1000000000000000000",
                 balance_eth=Decimal("1.0"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("2000.0")
+                value_usd=Decimal("2000.0"),
             ),
             token_balances=[
                 TokenBalance(
@@ -90,12 +86,12 @@ class TestBatchProcessor:
                     balance_formatted=Decimal("1.0"),
                     price_usd=Decimal("1.0"),
                     value_usd=Decimal("1.0"),
-                    is_verified=True
+                    is_verified=True,
                 )
             ],
             total_value_usd=Decimal("2001.0"),
             last_updated=datetime.now(UTC),
-            transaction_count=100
+            transaction_count=100,
         )
 
         client.get_wallet_portfolio = AsyncMock(return_value=portfolio)
@@ -124,6 +120,7 @@ class TestBatchProcessor:
 
         # Mock wallet addresses
         from wallet_tracker.clients.google_sheets_types import WalletAddress
+
         wallet_addresses = [
             WalletAddress(address="0x123", label="Wallet 1", row_number=2),
             WalletAddress(address="0x456", label="Wallet 2", row_number=3),
@@ -137,12 +134,7 @@ class TestBatchProcessor:
 
     @pytest.fixture
     def batch_processor(
-        self,
-        app_config,
-        mock_ethereum_client,
-        mock_coingecko_client,
-        mock_cache_manager,
-        mock_sheets_client
+        self, app_config, mock_ethereum_client, mock_coingecko_client, mock_cache_manager, mock_sheets_client
     ) -> BatchProcessor:
         """Create batch processor for testing."""
         return BatchProcessor(
@@ -150,7 +142,7 @@ class TestBatchProcessor:
             ethereum_client=mock_ethereum_client,
             coingecko_client=mock_coingecko_client,
             cache_manager=mock_cache_manager,
-            sheets_client=mock_sheets_client
+            sheets_client=mock_sheets_client,
         )
 
     @pytest.mark.asyncio
@@ -166,18 +158,12 @@ class TestBatchProcessor:
         assert batch_processor._stop_requested is False
 
     @pytest.mark.asyncio
-    async def test_process_wallets_from_sheets_success(
-        self,
-        batch_processor,
-        mock_sheets_client
-    ):
+    async def test_process_wallets_from_sheets_success(self, batch_processor, mock_sheets_client):
         """Test successful processing from Google Sheets."""
         spreadsheet_id = "test_sheet_id"
 
         result = await batch_processor.process_wallets_from_sheets(
-            spreadsheet_id=spreadsheet_id,
-            input_range="A:B",
-            output_range="A1"
+            spreadsheet_id=spreadsheet_id, input_range="A:B", output_range="A1"
         )
 
         assert isinstance(result, ProcessingResults)
@@ -185,29 +171,25 @@ class TestBatchProcessor:
         mock_sheets_client.read_wallet_addresses.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_process_wallets_from_sheets_no_addresses(
-        self,
-        batch_processor,
-        mock_sheets_client
-    ):
+    async def test_process_wallets_from_sheets_no_addresses(self, batch_processor, mock_sheets_client):
         """Test processing when no addresses found."""
         mock_sheets_client.read_wallet_addresses.return_value = []
 
-        result = await batch_processor.process_wallets_from_sheets(
-            spreadsheet_id="test_sheet_id"
-        )
+        result = await batch_processor.process_wallets_from_sheets(spreadsheet_id="test_sheet_id")
 
         assert result.total_wallets_input == 0
 
     @pytest.mark.asyncio
-    async def test_process_wallets_from_sheets_no_client(self, app_config, mock_ethereum_client, mock_coingecko_client, mock_cache_manager):
+    async def test_process_wallets_from_sheets_no_client(
+        self, app_config, mock_ethereum_client, mock_coingecko_client, mock_cache_manager
+    ):
         """Test processing without sheets client."""
         processor = BatchProcessor(
             config=app_config,
             ethereum_client=mock_ethereum_client,
             coingecko_client=mock_coingecko_client,
             cache_manager=mock_cache_manager,
-            sheets_client=None
+            sheets_client=None,
         )
 
         with pytest.raises(BatchProcessorError, match="Google Sheets client not configured"):
@@ -282,6 +264,7 @@ class TestBatchProcessor:
     @pytest.mark.asyncio
     async def test_process_single_job_timeout(self, batch_processor, mock_ethereum_client):
         """Test processing job with timeout."""
+
         # Mock timeout
         async def slow_response(*args, **kwargs):
             await asyncio.sleep(0.1)
@@ -306,7 +289,7 @@ class TestBatchProcessor:
             "eth_balance": {"balance_eth": "1.0"},
             "total_value_usd": "1000.0",
             "transaction_count": 50,
-            "token_balances": []
+            "token_balances": [],
         }
         mock_cache_manager.get_balance.return_value = cached_data
 
@@ -319,12 +302,12 @@ class TestBatchProcessor:
                 balance_wei="1000000000000000000",
                 balance_eth=Decimal("1.0"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("2000.0")
+                value_usd=Decimal("2000.0"),
             ),
             token_balances=[],
             total_value_usd=Decimal("1000.0"),
             last_updated=datetime.now(UTC),
-            transaction_count=50
+            transaction_count=50,
         )
         batch_processor.ethereum_client._deserialize_portfolio.return_value = portfolio
 
@@ -345,12 +328,12 @@ class TestBatchProcessor:
                 balance_wei="1000000000000000000",
                 balance_eth=Decimal("1.0"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("2000.0")
+                value_usd=Decimal("2000.0"),
             ),
             token_balances=[],
             total_value_usd=Decimal("2000.0"),
             last_updated=datetime.now(UTC),
-            transaction_count=50
+            transaction_count=50,
         )
         config = BatchConfig()
 
@@ -370,13 +353,13 @@ class TestBatchProcessor:
                 balance_wei="1000000000000000",  # Very small amount
                 balance_eth=Decimal("0.001"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("2.0")
+                value_usd=Decimal("2.0"),
             ),
             token_balances=[],
             total_value_usd=Decimal("2.0"),  # Low value
             last_updated=datetime.now(UTC),
             transaction_count=5,
-            last_transaction_timestamp=old_timestamp
+            last_transaction_timestamp=old_timestamp,
         )
 
         config = BatchConfig(inactive_threshold_days=365, min_value_threshold_usd=Decimal("1.0"))
@@ -394,12 +377,12 @@ class TestBatchProcessor:
                 balance_wei="10000000000000000000",  # 10 ETH
                 balance_eth=Decimal("10.0"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("20000.0")
+                value_usd=Decimal("20000.0"),
             ),
             token_balances=[],
             total_value_usd=Decimal("20000.0"),  # High value
             last_updated=datetime.now(UTC),
-            transaction_count=5
+            transaction_count=5,
         )
 
         config = BatchConfig(min_value_threshold_usd=Decimal("1.0"))
@@ -458,7 +441,7 @@ class TestBatchProcessor:
                 request_delay=0,
                 retry_attempts=0,
                 inactive_wallet_threshold_days=365,
-            )
+            ),
         )
 
         mock_cache = AsyncMock()
@@ -474,26 +457,21 @@ class TestBatchProcessor:
                 balance_wei="1000000000000000000",
                 balance_eth=Decimal("1.0"),
                 price_usd=Decimal("2000.0"),
-                value_usd=Decimal("2000.0")
+                value_usd=Decimal("2000.0"),
             ),
             token_balances=[],
             total_value_usd=Decimal("2000.0"),
             last_updated=datetime.now(UTC),
-            transaction_count=50
+            transaction_count=50,
         )
         mock_ethereum.get_wallet_portfolio.return_value = portfolio
         mock_ethereum._serialize_portfolio.return_value = {"test": "data"}
 
         processor = BatchProcessor(
-            config=minimal_config,
-            ethereum_client=mock_ethereum,
-            coingecko_client=AsyncMock(),
-            cache_manager=mock_cache
+            config=minimal_config, ethereum_client=mock_ethereum, coingecko_client=AsyncMock(), cache_manager=mock_cache
         )
 
-        addresses = [
-            {"address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", "label": "Test", "row_number": 1}
-        ]
+        addresses = [{"address": "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86", "label": "Test", "row_number": 1}]
 
         # Should not fail even if cache operations fail
         result = await processor.process_wallet_list(addresses=addresses)

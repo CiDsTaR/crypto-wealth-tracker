@@ -9,8 +9,8 @@ import pytest
 
 from wallet_tracker.monitoring.metrics import (
     Metric,
-    MetricType,
     MetricsCollector,
+    MetricType,
 )
 
 
@@ -50,8 +50,8 @@ class TestMetric:
         assert isinstance(histogram.values, deque)
         assert histogram.sum == 0.0
         assert histogram.count == 0
-        assert histogram.min_value == float('inf')
-        assert histogram.max_value == float('-inf')
+        assert histogram.min_value == float("inf")
+        assert histogram.max_value == float("-inf")
 
         # Timer metric
         timer = Metric("test_timer", MetricType.TIMER)
@@ -222,7 +222,7 @@ class TestMetric:
         rate.events.append(now - timedelta(seconds=3600))  # 1h ago
 
         # Mock datetime.now to return our 'now'
-        with patch('wallet_tracker.monitoring.metrics.datetime') as mock_dt:
+        with patch("wallet_tracker.monitoring.metrics.datetime") as mock_dt:
             mock_dt.now.return_value = now
             mock_dt.UTC = UTC
 
@@ -270,7 +270,7 @@ class TestMetric:
             metric_type=MetricType.COUNTER,
             description="Test metric",
             unit="requests",
-            tags={"service": "api"}
+            tags={"service": "api"},
         )
         metric.increment(5)
 
@@ -337,7 +337,7 @@ class TestMetricsCollector:
             metric_type=MetricType.COUNTER,
             description="Test metric",
             unit="requests",
-            tags={"component": "test"}
+            tags={"component": "test"},
         )
 
         assert metric.name == "test_metric"
@@ -350,7 +350,7 @@ class TestMetricsCollector:
         metrics_collector.register_metric("duplicate", MetricType.COUNTER)
 
         # Register again with same name - should log warning
-        with patch('wallet_tracker.monitoring.metrics.logger') as mock_logger:
+        with patch("wallet_tracker.monitoring.metrics.logger") as mock_logger:
             metrics_collector.register_metric("duplicate", MetricType.GAUGE)
             mock_logger.warning.assert_called_once()
 
@@ -469,7 +469,7 @@ class TestMetricsCollector:
 
     def test_stop_nonexistent_timer(self, metrics_collector):
         """Test stopping non-existent timer."""
-        with patch('wallet_tracker.monitoring.metrics.logger') as mock_logger:
+        with patch("wallet_tracker.monitoring.metrics.logger") as mock_logger:
             duration = metrics_collector.stop_timer("nonexistent")
             assert duration == 0.0
             mock_logger.warning.assert_called_once()
@@ -489,24 +489,15 @@ class TestMetricsCollector:
     async def test_record_processing_run(self, metrics_collector):
         """Test recording processing run metrics."""
         processing_results = {
-            "results": {
-                "processed": 10,
-                "failed": 2,
-                "skipped": 1
-            },
-            "portfolio_values": {
-                "total_usd": 50000.0
-            },
-            "activity": {
-                "active_wallets": 8,
-                "inactive_wallets": 2
-            },
+            "results": {"processed": 10, "failed": 2, "skipped": 1},
+            "portfolio_values": {"total_usd": 50000.0},
+            "activity": {"active_wallets": 8, "inactive_wallets": 2},
             "performance": {
                 "total_time_seconds": 30.0,
                 "average_time_per_wallet": 3.0,
                 "api_calls_total": 50,
-                "cache_hit_rate": 80.0
-            }
+                "cache_hit_rate": 80.0,
+            },
         }
 
         await metrics_collector.record_processing_run(processing_results)
@@ -523,10 +514,7 @@ class TestMetricsCollector:
 
         class MockResults:
             def get_summary_dict(self):
-                return {
-                    "results": {"processed": 5},
-                    "portfolio_values": {"total_usd": 10000.0}
-                }
+                return {"results": {"processed": 5}, "portfolio_values": {"total_usd": 10000.0}}
 
         mock_results = MockResults()
         await metrics_collector.record_processing_run(mock_results)
@@ -536,12 +524,7 @@ class TestMetricsCollector:
 
     def test_record_api_call(self, metrics_collector):
         """Test recording API call metrics."""
-        metrics_collector.record_api_call(
-            service="ethereum",
-            duration=1.5,
-            success=True,
-            status_code=200
-        )
+        metrics_collector.record_api_call(service="ethereum", duration=1.5, success=True, status_code=200)
 
         # Should create metrics with service tags
         api_requests = None
@@ -561,12 +544,7 @@ class TestMetricsCollector:
 
     def test_record_api_call_failure(self, metrics_collector):
         """Test recording failed API call."""
-        metrics_collector.record_api_call(
-            service="coingecko",
-            duration=5.0,
-            success=False,
-            status_code=500
-        )
+        metrics_collector.record_api_call(service="coingecko", duration=5.0, success=False, status_code=500)
 
         # Should record error metric
         error_metric = None
@@ -580,12 +558,7 @@ class TestMetricsCollector:
 
     def test_record_api_call_rate_limit(self, metrics_collector):
         """Test recording rate limited API call."""
-        metrics_collector.record_api_call(
-            service="coingecko",
-            duration=1.0,
-            success=False,
-            status_code=429
-        )
+        metrics_collector.record_api_call(service="coingecko", duration=1.0, success=False, status_code=429)
 
         # Should record both error and rate limit metrics
         rate_limit_metric = None
@@ -600,20 +573,10 @@ class TestMetricsCollector:
     def test_record_cache_operation(self, metrics_collector):
         """Test recording cache operation metrics."""
         # Cache hit
-        metrics_collector.record_cache_operation(
-            operation="get",
-            duration=0.01,
-            hit=True,
-            backend="redis"
-        )
+        metrics_collector.record_cache_operation(operation="get", duration=0.01, hit=True, backend="redis")
 
         # Cache miss
-        metrics_collector.record_cache_operation(
-            operation="get",
-            duration=0.05,
-            hit=False,
-            backend="redis"
-        )
+        metrics_collector.record_cache_operation(operation="get", duration=0.05, hit=False, backend="redis")
 
         # Find the hit metric
         hit_metric = None
@@ -634,7 +597,7 @@ class TestMetricsCollector:
     async def test_collect_system_metrics(self, metrics_collector):
         """Test collecting system metrics."""
         # Mock psutil
-        with patch('wallet_tracker.monitoring.metrics.psutil') as mock_psutil:
+        with patch("wallet_tracker.monitoring.metrics.psutil") as mock_psutil:
             # Mock memory info
             mock_memory = MagicMock()
             mock_memory.used = 1000000000  # 1GB
@@ -662,8 +625,8 @@ class TestMetricsCollector:
     @pytest.mark.asyncio
     async def test_collect_system_metrics_no_psutil(self, metrics_collector):
         """Test collecting system metrics when psutil is not available."""
-        with patch('wallet_tracker.monitoring.metrics.psutil', side_effect=ImportError):
-            with patch('wallet_tracker.monitoring.metrics.logger') as mock_logger:
+        with patch("wallet_tracker.monitoring.metrics.psutil", side_effect=ImportError):
+            with patch("wallet_tracker.monitoring.metrics.logger") as mock_logger:
                 await metrics_collector.collect_system_metrics()
                 mock_logger.debug.assert_called_with("psutil not available, skipping system metrics")
 
@@ -724,12 +687,12 @@ class TestMetricsCollector:
 
         influxdb_output = metrics_collector.export_metrics("influxdb")
 
-        lines = influxdb_output.strip().split('\n')
+        lines = influxdb_output.strip().split("\n")
         assert len(lines) >= 2
 
         # Check format
         for line in lines:
-            parts = line.split(' ')
+            parts = line.split(" ")
             assert len(parts) >= 2  # metric_name field=value timestamp
 
     def test_export_metrics_invalid_format(self, metrics_collector):
@@ -822,5 +785,6 @@ class TestMetricsIntegration:
 
         json_output = collector.export_metrics("json")
         import json
+
         json_data = json.loads(json_output)
         assert json_data["metrics"]["active_connections"]["value"] == 5

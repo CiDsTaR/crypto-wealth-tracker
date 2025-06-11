@@ -433,7 +433,7 @@ async def get_portfolio_with_retry(client, address, max_retries=3):
         except APIError as e:
             if attempt == max_retries - 1:
                 raise
-            
+
             wait_time = 2 ** attempt  # Exponential backoff
             print(f"Retry {attempt + 1}/{max_retries} in {wait_time}s: {e}")
             await asyncio.sleep(wait_time)
@@ -488,19 +488,19 @@ async def analyze_single_wallet():
     """Analyze a single wallet and print results."""
     async with create_application() as app:
         address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-        
+
         portfolio = await app.ethereum_client.get_wallet_portfolio(
             wallet_address=address,
             include_metadata=True,
             include_prices=True
         )
-        
+
         print(f"Address: {portfolio.address}")
         print(f"ETH Balance: {portfolio.eth_balance.balance_eth:.4f} ETH")
         print(f"ETH Value: ${portfolio.eth_balance.value_usd:,.2f}")
         print(f"Total Value: ${portfolio.total_value_usd:,.2f}")
         print(f"Token Count: {len(portfolio.token_balances)}")
-        
+
         for token in portfolio.token_balances[:5]:  # Top 5 tokens
             print(f"  {token.symbol}: {token.balance_formatted:.4f} (${token.value_usd:,.2f})")
 
@@ -518,7 +518,7 @@ async def batch_analyze_wallets():
         {"address": "0x742d35Cc6634C0532925a3b8D40e4f337F42090B", "label": "Whale", "row_number": 2},
         # Add more addresses...
     ]
-    
+
     async with create_application() as app:
         def progress_callback(progress):
             percentage = progress.get_progress_percentage()
@@ -526,12 +526,12 @@ async def batch_analyze_wallets():
                   f"Completed: {progress.jobs_completed}, "
                   f"Failed: {progress.jobs_failed}, "
                   f"Value: ${progress.total_value_processed:,.2f}")
-        
+
         results = await app.batch_processor.process_wallet_list(
             addresses=addresses,
             progress_callback=progress_callback
         )
-        
+
         print(f"\nFinal Results:")
         print(f"Processed: {results.wallets_processed}")
         print(f"Total Value: ${results.total_portfolio_value:,.2f}")
@@ -548,16 +548,16 @@ async def sheets_integration_example():
     """Complete Google Sheets integration example."""
     async with create_application() as app:
         spreadsheet_id = "your_spreadsheet_id_here"
-        
+
         # Read addresses from sheets
         addresses = await app.sheets_client.read_wallet_addresses(
             spreadsheet_id=spreadsheet_id,
             range_name="A:B",
             skip_header=True
         )
-        
+
         print(f"Found {len(addresses)} addresses in sheet")
-        
+
         # Process wallets
         results = await app.process_wallets_from_sheets(
             spreadsheet_id=spreadsheet_id,
@@ -565,7 +565,7 @@ async def sheets_integration_example():
             output_range="A1",
             dry_run=False  # Set to True to test without writing
         )
-        
+
         print(f"Results written to sheet: {spreadsheet_id}")
         print(f"Summary: {results.get_summary_dict()}")
 
@@ -579,22 +579,22 @@ async def cache_example():
     """Example of custom cache usage."""
     async with create_application() as app:
         cache_manager = app.cache_manager
-        
+
         # Cache token prices manually
         await cache_manager.set_price("ethereum", {
             "usd": 2000.0,
             "last_updated": datetime.now().isoformat()
         })
-        
+
         # Retrieve cached price
         cached_price = await cache_manager.get_price("ethereum")
         print(f"Cached ETH price: ${cached_price['usd']}")
-        
+
         # Cache wallet portfolio
         address = "0x..."
         portfolio_data = {"total_value": 50000, "token_count": 5}
         await cache_manager.set_balance(address, portfolio_data)
-        
+
         # Get cache statistics
         stats = await cache_manager.get_stats()
         for backend, backend_stats in stats.items():

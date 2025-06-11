@@ -4,8 +4,6 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
 
-import pytest
-
 from wallet_tracker.clients.google_sheets_types import (
     WALLET_RESULT_COLUMNS,
     WALLET_RESULT_HEADERS,
@@ -384,11 +382,21 @@ class TestWalletResultColumns:
     def test_wallet_result_columns_completeness(self):
         """Test that all expected columns are defined."""
         expected_columns = [
-            "address", "label", "eth_balance", "eth_value_usd",
-            "usdc_balance", "usdt_balance", "dai_balance",
-            "aave_balance", "uni_balance", "link_balance",
-            "other_tokens_value_usd", "total_value_usd",
-            "last_updated", "transaction_count", "is_active"
+            "address",
+            "label",
+            "eth_balance",
+            "eth_value_usd",
+            "usdc_balance",
+            "usdt_balance",
+            "dai_balance",
+            "aave_balance",
+            "uni_balance",
+            "link_balance",
+            "other_tokens_value_usd",
+            "total_value_usd",
+            "last_updated",
+            "transaction_count",
+            "is_active",
         ]
 
         for column in expected_columns:
@@ -404,7 +412,7 @@ class TestWalletResultColumns:
     def test_wallet_result_columns_sequential(self):
         """Test that columns are in sequential order."""
         columns = list(WALLET_RESULT_COLUMNS.values())
-        expected_sequence = [chr(ord('A') + i) for i in range(len(columns))]
+        expected_sequence = [chr(ord("A") + i) for i in range(len(columns))]
         assert columns == expected_sequence
 
     def test_wallet_result_headers_count(self):
@@ -414,14 +422,24 @@ class TestWalletResultColumns:
     def test_wallet_result_headers_content(self):
         """Test wallet result headers content."""
         expected_headers = [
-            "Address", "Label", "ETH Balance", "ETH Value (USD)",
-            "USDC Balance", "USDT Balance", "DAI Balance",
-            "AAVE Balance", "UNI Balance", "LINK Balance",
-            "Other Tokens Value (USD)", "Total Value (USD)",
-            "Last Updated", "Transaction Count", "Is Active"
+            "Address",
+            "Label",
+            "ETH Balance",
+            "ETH Value (USD)",
+            "USDC Balance",
+            "USDT Balance",
+            "DAI Balance",
+            "AAVE Balance",
+            "UNI Balance",
+            "LINK Balance",
+            "Other Tokens Value (USD)",
+            "Total Value (USD)",
+            "Last Updated",
+            "Transaction Count",
+            "Is Active",
         ]
 
-        assert WALLET_RESULT_HEADERS == expected_headers
+        assert expected_headers == WALLET_RESULT_HEADERS
 
     def test_wallet_result_headers_no_empty(self):
         """Test that no headers are empty."""
@@ -445,10 +463,7 @@ class TestCreateWalletResultFromPortfolio:
         mock_portfolio.token_balances = []
 
         result = create_wallet_result_from_portfolio(
-            address="0x123",
-            label="Test Wallet",
-            portfolio=mock_portfolio,
-            is_active=True
+            address="0x123", label="Test Wallet", portfolio=mock_portfolio, is_active=True
         )
 
         assert result.address == "0x123"
@@ -488,10 +503,7 @@ class TestCreateWalletResultFromPortfolio:
         mock_portfolio.token_balances = [usdc_token, aave_token, other_token]
 
         result = create_wallet_result_from_portfolio(
-            address="0x123",
-            label="Rich Wallet",
-            portfolio=mock_portfolio,
-            is_active=True
+            address="0x123", label="Rich Wallet", portfolio=mock_portfolio, is_active=True
         )
 
         assert result.usdc_balance == Decimal("1000.0")
@@ -516,10 +528,7 @@ class TestCreateWalletResultFromPortfolio:
         mock_portfolio.token_balances = [token_without_value]
 
         result = create_wallet_result_from_portfolio(
-            address="0x123",
-            label="Test Wallet",
-            portfolio=mock_portfolio,
-            is_active=False
+            address="0x123", label="Test Wallet", portfolio=mock_portfolio, is_active=False
         )
 
         assert result.eth_value_usd == Decimal("0")  # Should default to 0
@@ -649,7 +658,7 @@ class TestCreateSummaryFromResults:
         assert summary.eth_holders == 3  # All have ETH > 0
         assert summary.usdc_holders == 2  # wallet1 and wallet3
         assert summary.usdt_holders == 1  # wallet2 only
-        assert summary.dai_holders == 1   # wallet1 only
+        assert summary.dai_holders == 1  # wallet1 only
 
     def test_create_summary_median_calculation_even_count(self):
         """Test median calculation with even number of wallets."""
@@ -710,7 +719,7 @@ class TestCreateSummaryFromResults:
         # Each stablecoin should be valued at $1 for summary calculations
         assert summary.usdc_total_value == Decimal("1000.0")  # 1000 * $1
         assert summary.usdt_total_value == Decimal("2000.0")  # 2000 * $1
-        assert summary.dai_total_value == Decimal("500.0")    # 500 * $1
+        assert summary.dai_total_value == Decimal("500.0")  # 500 * $1
 
 
 class TestTypeValidation:

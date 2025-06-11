@@ -83,7 +83,7 @@ class SheetRange:
         result = ""
         while column_number > 0:
             column_number -= 1
-            result = chr(column_number % 26 + ord('A')) + result
+            result = chr(column_number % 26 + ord("A")) + result
             column_number //= 26
         return result
 
@@ -92,7 +92,7 @@ class SheetRange:
         """Convert column letter to number (A -> 1, Z -> 26, AA -> 27, etc.)."""
         result = 0
         for char in column_letter.upper():
-            result = result * 26 + (ord(char) - ord('A') + 1)
+            result = result * 26 + (ord(char) - ord("A") + 1)
         return result
 
     @staticmethod
@@ -213,7 +213,6 @@ def create_wallet_result_from_portfolio(
     Returns:
         WalletResult object
     """
-    from ..clients.ethereum_types import WalletPortfolio
 
     # Extract token balances by symbol
     token_balances = {}
@@ -293,9 +292,9 @@ def create_summary_from_results(wallet_results: list[WalletResult], processing_t
     if n == 0:
         median_value_usd = Decimal("0")
     elif n % 2 == 0:
-        median_value_usd = (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
+        median_value_usd = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
     else:
-        median_value_usd = sorted_values[n//2]
+        median_value_usd = sorted_values[n // 2]
 
     # Calculate token-specific statistics
     eth_total_value = sum(result.eth_value_usd for result in wallet_results)
