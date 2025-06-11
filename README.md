@@ -49,6 +49,7 @@ cd crypto-wealth-tracker
 2. **Install dependencies:**
 ```bash
 uv sync --all-extras
+uv run pre-commit install
 ```
 
 3. **Configure environment:**
