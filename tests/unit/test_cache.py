@@ -168,7 +168,7 @@ class TestCacheFactory:
         assert isinstance(cache, FileCache)
 
     @patch("wallet_tracker.utils.cache.redis_cache.redis")
-    def test_create_redis_cache(self) -> None:
+    def test_create_redis_cache(self, mock_redis) -> None:
         """Test creating Redis cache."""
         config = CacheConfig(
             backend=CacheBackend.REDIS,
