@@ -27,7 +27,7 @@ from .config import SettingsError
 from .monitoring.health import HealthChecker
 from .monitoring.metrics import MetricsCollector
 from .processors import BatchProcessor, WalletProcessor
-from .utils import CacheFactory, CacheManager
+from .utils.cache import CacheFactory, CacheManager
 
 
 class UnicodeFilter(logging.Filter):

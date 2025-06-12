@@ -99,7 +99,7 @@ class BackoffConfig:
         # Apply jitter
         if self.jitter and calculated_delay > 0:
             jitter_amount = calculated_delay * self.jitter_range
-            jitter_offset = random.uniform(-jitter_amount, jitter_amount)
+            jitter_offset = random.uniform(-jitter_amount, jitter_amount)  # nosec B311 # noqa: S311
             calculated_delay += jitter_offset
 
         # Ensure within bounds
@@ -374,10 +374,12 @@ class Throttle:
             self.state.update_success()
 
             # Reset backoff on success
-            if self.backoff_config.reset_on_success:
-                if self.state.consecutive_successes >= self.backoff_config.success_threshold:
-                    self.current_attempt = 0
-                    self.backoff_until = None
+            if (
+                self.backoff_config.reset_on_success
+                and self.state.consecutive_successes >= self.backoff_config.success_threshold
+            ):
+                self.current_attempt = 0
+                self.backoff_until = None
 
     async def report_failure(self, trigger_backoff: bool = True) -> None:
         """Report failed request.
@@ -428,7 +430,7 @@ class Throttle:
 class ThrottleManager:
     """Manages multiple throttles for different services."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize throttle manager."""
         self.throttles: dict[str, Throttle] = {}
         self._global_lock = asyncio.Lock()

@@ -17,7 +17,7 @@ from wallet_tracker.clients import (
     create_summary_from_results,
 )
 from wallet_tracker.config import GoogleSheetsConfig
-from wallet_tracker.utils import CacheManager
+from wallet_tracker.utils.cache import CacheManager
 
 
 class TestSheetRange:

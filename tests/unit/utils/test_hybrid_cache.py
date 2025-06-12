@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from wallet_tracker.utils import FileCache, HybridCache, RedisCache
+from wallet_tracker.utils.cache import FileCache, HybridCache, RedisCache
 from wallet_tracker.utils.cache.cache_interface import CacheConnectionError, CacheError
 
 

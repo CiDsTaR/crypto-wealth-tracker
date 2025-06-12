@@ -17,7 +17,7 @@ from wallet_tracker.clients import (
 )
 from wallet_tracker.config import AppConfig, CoinGeckoConfig, EthereumConfig, GoogleSheetsConfig
 from wallet_tracker.processors import WalletProcessor, WalletProcessorError
-from wallet_tracker.utils import CacheManager
+from wallet_tracker.utils.cache import CacheManager
 
 
 class TestWalletProcessor:

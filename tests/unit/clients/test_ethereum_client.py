@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
+from wallet_tracker.clients.coingecko_client import APIError
 from wallet_tracker.clients import (
-    APIError,
     EthBalance,
     EthereumClient,
     InvalidAddressError,
@@ -21,7 +21,7 @@ from wallet_tracker.clients import (
     wei_to_eth,
 )
 from wallet_tracker.config import EthereumConfig
-from wallet_tracker.utils import CacheManager
+from wallet_tracker.utils.cache import CacheManager
 
 
 class TestEthereumTypes:
@@ -157,7 +157,7 @@ class TestEthereumClient:
             "result": [{"symbol": "USDC", "name": "USD Coin", "decimals": 6, "logo": "https://example.com/usdc.png"}]
         }
 
-        with patch.object(ethereum_client, "_make_request") as mock_request:
+        with patch.object(ethereum_client, "_make_single_request") as mock_request:
             # Set up mock responses in order
             mock_request.side_effect = [
                 eth_balance_response,  # ETH balance
@@ -166,7 +166,7 @@ class TestEthereumClient:
             ]
 
             # Mock ETH price
-            with patch.object(ethereum_client, "_get_eth_price", return_value=Decimal("2000")):
+            with patch.object(ethereum_client, "_get_eth_price_with_fallback", return_value=Decimal("2000")):
                 portfolio = await ethereum_client.get_wallet_portfolio(wallet_address)
 
                 # Verify portfolio structure
@@ -215,7 +215,7 @@ class TestEthereumClient:
         """Test API error handling."""
         wallet_address = "0x742d35Cc6634C0532925a3b8D40e3f337ABC7b86"
 
-        with patch.object(ethereum_client, "_make_request") as mock_request:
+        with patch.object(ethereum_client, "_make_single_request") as mock_request:
             mock_request.side_effect = APIError("API request failed")
 
             with pytest.raises(APIError):
@@ -364,7 +364,7 @@ class TestMockHTTPSession:
 
         try:
             # Test request
-            response = await client._make_request("POST", "https://test.com", {"test": "data"})
+            response = await client._make_single_request("POST", "https://test.com", {"test": "data"})
             assert response == {"result": "0x0"}
 
             # Verify session was called

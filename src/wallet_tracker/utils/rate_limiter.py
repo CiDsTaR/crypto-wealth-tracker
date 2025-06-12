@@ -6,7 +6,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class RateLimitStrategy(str, Enum):
     """Rate limiting strategies."""
 
-    TOKEN_BUCKET = "token_bucket"
+    TOKEN_BUCKET = "token_bucket"  # nosec B105
     SLIDING_WINDOW = "sliding_window"
     FIXED_WINDOW = "fixed_window"
     ADAPTIVE = "adaptive"
@@ -53,7 +53,7 @@ class RateLimit:
     # Strategy
     strategy: RateLimitStrategy = RateLimitStrategy.TOKEN_BUCKET
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate rate limit configuration."""
         if self.requests_per_second <= 0:
             raise ValueError("requests_per_second must be positive")
@@ -151,7 +151,7 @@ class TokenBucketLimiter:
         """Get current limiter status."""
         return RateLimitStatus(
             requests_remaining=int(self.tokens),
-            reset_time=datetime.now(timezone.utc) + timedelta(seconds=1 / self.refill_rate),
+            reset_time=datetime.now(UTC) + timedelta(seconds=1 / self.refill_rate),
         )
 
 
@@ -212,7 +212,7 @@ class SlidingWindowLimiter:
         return RateLimitStatus(
             requests_made=len(self.requests),
             requests_remaining=max(0, self.max_requests - len(self.requests)),
-            reset_time=datetime.now(timezone.utc) + timedelta(seconds=self.window_size),
+            reset_time=datetime.now(UTC) + timedelta(seconds=self.window_size),
         )
 
 
@@ -334,7 +334,7 @@ class AdaptiveLimiter:
 class RateLimiterManager:
     """Manages multiple rate limiters for different services and endpoints."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize rate limiter manager."""
         self.limiters: dict[str, TokenBucketLimiter | SlidingWindowLimiter | AdaptiveLimiter] = {}
         self.rate_limits: dict[str, RateLimit] = {}
@@ -491,7 +491,9 @@ class RateLimiterManager:
 
 
 # Decorator for automatic rate limiting
-def rate_limited(limiter_name: str, requests: int = 1, manager: RateLimiterManager | None = None):
+def rate_limited(
+    limiter_name: str, requests: int = 1, manager: RateLimiterManager | None = None
+) -> Callable:
     """Decorator to automatically apply rate limiting to functions.
 
     Args:
@@ -501,7 +503,7 @@ def rate_limited(limiter_name: str, requests: int = 1, manager: RateLimiterManag
     """
 
     def decorator(func: Callable) -> Callable:
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
             nonlocal manager
 
             if manager is None:
@@ -563,12 +565,10 @@ def create_coingecko_rate_limiter(requests_per_minute: int = 30, has_pro_api: bo
     Returns:
         Rate limit configuration
     """
-    if has_pro_api:
-        # Pro plan limits
-        requests_per_second = min(50.0, requests_per_minute / 60.0)
-    else:
-        # Free plan limits
-        requests_per_second = min(requests_per_minute / 60.0, 0.5)  # Max 30/minute = 0.5/second
+    # Pro plan limits vs Free plan limits
+    requests_per_second = (
+        min(50.0, requests_per_minute / 60.0) if has_pro_api else min(requests_per_minute / 60.0, 0.5)
+    )  # Max 30/minute = 0.5/second
 
     return RateLimit(
         requests_per_second=requests_per_second,

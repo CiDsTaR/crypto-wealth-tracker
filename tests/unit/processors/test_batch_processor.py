@@ -26,7 +26,7 @@ from wallet_tracker.processors.wallet_types import (
     WalletProcessingJob,
     WalletStatus,
 )
-from wallet_tracker.utils import CacheManager
+from wallet_tracker.utils.cache import CacheManager
 
 
 class TestBatchProcessor:

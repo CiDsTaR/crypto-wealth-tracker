@@ -145,6 +145,7 @@ temp/
 data/test_*.json
 google_sheets_credentials.json
 examples/*.json
+checkpoints/
 
 # OS specific
 .DS_Store

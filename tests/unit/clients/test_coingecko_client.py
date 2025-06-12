@@ -17,7 +17,7 @@ from wallet_tracker.clients import (
 )
 from wallet_tracker.clients.coingecko_client import APIError
 from wallet_tracker.config import CoinGeckoConfig
-from wallet_tracker.utils import CacheManager
+from wallet_tracker.utils.cache import CacheManager
 
 
 class TestCoinGeckoTypes:

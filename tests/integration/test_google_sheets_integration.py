@@ -12,8 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from wallet_tracker.clients import GoogleSheetsClient, WalletResult, create_summary_from_results
-from wallet_tracker.config import GoogleSheetsConfig
-from wallet_tracker.utils import CacheConfig, CacheManager
+from wallet_tracker.config import GoogleSheetsConfig, CacheConfig
+from wallet_tracker.utils.cache import CacheManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
